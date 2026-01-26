@@ -122,7 +122,7 @@
           "id": "P4.3",
           "description": "Traverse AccessibilityNodeInfo tree",
           "test": "Can iterate all nodes",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P4.4",

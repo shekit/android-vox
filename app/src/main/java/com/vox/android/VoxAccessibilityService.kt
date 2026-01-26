@@ -25,10 +25,41 @@ class VoxAccessibilityService : AccessibilityService() {
         if (rootNode != null) {
             Log.d(TAG, "Got root window: package=${rootNode.packageName}, " +
                     "childCount=${rootNode.childCount}, className=${rootNode.className}")
+
+            // P4.3: Traverse tree - temporarily disabled for testing
+            try {
+                val nodeCount = traverseTree(rootNode, 0)
+                Log.d(TAG, "Traversed $nodeCount nodes in the tree")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error traversing tree", e)
+            }
+
             rootNode.recycle()
         } else {
             Log.w(TAG, "Root window is null")
         }
+    }
+
+    private fun traverseTree(node: AccessibilityNodeInfo, depth: Int): Int {
+        var count = 1 // Count this node
+
+        // Log node info (limit logging to prevent spam)
+        if (depth < 3) {
+            Log.v(TAG, "${"  ".repeat(depth)}Node: ${node.className}, " +
+                    "text=${node.text}, contentDesc=${node.contentDescription}, " +
+                    "clickable=${node.isClickable}, children=${node.childCount}")
+        }
+
+        // Traverse children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                count += traverseTree(child, depth + 1)
+                child.recycle()
+            }
+        }
+
+        return count
     }
 
     override fun onInterrupt() {
