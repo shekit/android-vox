@@ -306,4 +306,126 @@ class VoxAccessibilityService : AccessibilityService() {
             false
         }
     }
+
+    // P5.4: Type text action works
+    fun typeText(node: AccessibilityNodeInfo, text: String): Boolean {
+        return try {
+            // Focus the node first
+            node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+
+            // Set the text
+            val arguments = android.os.Bundle()
+            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+            val success = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+
+            if (success) {
+                Log.d(TAG, "Typed text '$text' into node: ${node.className}")
+            } else {
+                Log.w(TAG, "Type text action returned false for node: ${node.className}")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "Error typing text into node", e)
+            false
+        }
+    }
+
+    fun typeTextById(resourceId: String, text: String): Boolean {
+        val node = findNodeById(resourceId)
+        return if (node != null) {
+            val success = typeText(node, text)
+            node.recycle()
+            success
+        } else {
+            Log.w(TAG, "Cannot type text: node with id '$resourceId' not found")
+            false
+        }
+    }
+
+    fun typeTextByText(nodeText: String, textToType: String): Boolean {
+        val node = findNodeByText(nodeText)
+        return if (node != null) {
+            val success = typeText(node, textToType)
+            node.recycle()
+            success
+        } else {
+            Log.w(TAG, "Cannot type text: node with text '$nodeText' not found")
+            false
+        }
+    }
+
+    // P5.5: Scroll action works
+    fun scrollForward(node: AccessibilityNodeInfo): Boolean {
+        return try {
+            val success = node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
+            if (success) {
+                Log.d(TAG, "Scrolled forward in node: ${node.className}")
+            } else {
+                Log.w(TAG, "Scroll forward action returned false for node: ${node.className}")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "Error scrolling forward", e)
+            false
+        }
+    }
+
+    fun scrollBackward(node: AccessibilityNodeInfo): Boolean {
+        return try {
+            val success = node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+            if (success) {
+                Log.d(TAG, "Scrolled backward in node: ${node.className}")
+            } else {
+                Log.w(TAG, "Scroll backward action returned false for node: ${node.className}")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "Error scrolling backward", e)
+            false
+        }
+    }
+
+    fun scrollForwardInActiveWindow(): Boolean {
+        val rootNode = rootInActiveWindow ?: run {
+            Log.w(TAG, "Cannot scroll: root window is null")
+            return false
+        }
+
+        try {
+            return scrollForward(rootNode)
+        } finally {
+            rootNode.recycle()
+        }
+    }
+
+    // P5.6: Back action works
+    fun pressBack(): Boolean {
+        return try {
+            val success = performGlobalAction(GLOBAL_ACTION_BACK)
+            if (success) {
+                Log.d(TAG, "Pressed back button")
+            } else {
+                Log.w(TAG, "Back action returned false")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "Error pressing back", e)
+            false
+        }
+    }
+
+    fun pressHome(): Boolean {
+        return try {
+            val success = performGlobalAction(GLOBAL_ACTION_HOME)
+            if (success) {
+                Log.d(TAG, "Pressed home button")
+            } else {
+                Log.w(TAG, "Home action returned false")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "Error pressing home", e)
+            false
+        }
+    }
 }

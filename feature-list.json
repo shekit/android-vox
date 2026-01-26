@@ -171,19 +171,19 @@
           "id": "P5.4",
           "description": "Type text action works",
           "test": "ACTION_SET_TEXT fills an EditText",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P5.5",
           "description": "Scroll action works",
           "test": "ACTION_SCROLL_FORWARD scrolls a list",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P5.6",
           "description": "Back action works",
           "test": "GLOBAL_ACTION_BACK navigates back",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P5.7",

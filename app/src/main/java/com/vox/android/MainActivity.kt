@@ -33,7 +33,19 @@ class MainActivity : AppCompatActivity() {
         buttonSend.setOnClickListener {
             val command = editCommand.text.toString()
             Log.d(TAG, "Send button clicked with command: $command")
-            textResponse.text = command
+
+            // P5.6: Test back action
+            if (command.equals("back", ignoreCase = true)) {
+                val service = VoxAccessibilityService.getInstance()
+                if (service != null) {
+                    val success = service.pressBack()
+                    textResponse.text = if (success) "Pressed back button" else "Back action failed"
+                } else {
+                    textResponse.text = "Accessibility service not running"
+                }
+            } else {
+                textResponse.text = command
+            }
             editCommand.text.clear()
         }
 
@@ -64,12 +76,23 @@ class MainActivity : AppCompatActivity() {
                     "Failed to launch Settings app"
                 }
 
-                // P5.2 & P5.3: Test finding and tapping a node after launching Settings
+                // P5.2, P5.3, P5.5: Test finding, tapping, and scrolling after launching Settings
                 if (success) {
                     android.os.Handler(mainLooper).postDelayed({
+                        // P5.3: Tap Wi-Fi
                         val tapSuccess = service.tapByText("Wi")
                         if (tapSuccess) {
-                            textResponse.text = "Found and tapped 'Wi' (Wi-Fi) setting"
+                            textResponse.text = "Tapped 'Wi' (Wi-Fi) setting"
+
+                            // P5.5: Wait then scroll
+                            android.os.Handler(mainLooper).postDelayed({
+                                val scrollSuccess = service.scrollForwardInActiveWindow()
+                                textResponse.text = if (scrollSuccess) {
+                                    "Tapped Wi-Fi, then scrolled down"
+                                } else {
+                                    "Tapped Wi-Fi but couldn't scroll"
+                                }
+                            }, 1500)
                         } else {
                             textResponse.text = "Launched Settings but couldn't find/tap 'Wi' node"
                         }
