@@ -54,7 +54,7 @@
           "id": "P2.3",
           "description": "Response TextView",
           "test": "Text area visible below input",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P2.4",
