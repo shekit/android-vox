@@ -48,7 +48,7 @@
           "id": "P2.2",
           "description": "Send button",
           "test": "Button visible and clickable",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P2.3",
