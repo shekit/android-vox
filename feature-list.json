@@ -97,7 +97,7 @@
           "id": "P3.5",
           "description": "Service can be toggled on",
           "test": "Enable it, no crash",
-          "passes": false
+          "passes": true
         }
       ]
     },
