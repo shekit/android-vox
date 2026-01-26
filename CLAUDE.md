@@ -102,7 +102,7 @@ Use a consistent tag so logs are easy to filter.
   - What was accomplished
   - Current state
   - Any blockers or issues
-  - Suggested next steps
+- Do NOT add "next steps" to claude-progress.md — use `feature-list.json` to determine what's pending
 
 ## Project Structure
 

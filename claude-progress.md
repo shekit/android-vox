@@ -5,14 +5,6 @@
 **Phase**: Phase 1 Complete
 **State**: Android project skeleton complete, app builds/installs/launches
 
-## Next Steps
-
-Phase 2: Test UI
-- P2.1: EditText for command input
-- P2.2: Send button
-- P2.3: Response TextView
-- P2.4: Button echoes input to response
-
 ## Session History
 
 ### Session 2 — 2026-01-26
