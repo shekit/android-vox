@@ -24,6 +24,7 @@ Building a minimal test harness:
 2. Read `feature-list.json` to see what's done/pending
 3. Check `git log --oneline -10` for recent changes
 4. Run `./init.sh` to verify environment is ready
+5. If working on Phase 7, read `PHASE7_NOTES.md` for implementation guidance
 
 ### During a Session
 - Work on ONE feature at a time
