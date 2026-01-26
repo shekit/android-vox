@@ -29,6 +29,13 @@
 - Responses displayed in text area with "Claude says: <action>" format
 - Added INTERNET permission to AndroidManifest
 
+**Important Note for Phase 7**:
+- Current implementation captures UI tree of the **active window** (rootInActiveWindow)
+- When android-vox is in foreground, it captures android-vox's own UI tree
+- For Phase 7's autonomous loop to work: target app must be in foreground, android-vox runs in background
+- The command loop should: launch target app → capture its UI → ask Claude → execute action → repeat
+- Status updates can be shown via notifications or brief foreground switches
+
 ---
 
 ### Session 6 — 2026-01-26

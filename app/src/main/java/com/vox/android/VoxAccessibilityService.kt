@@ -38,6 +38,9 @@ class VoxAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Accessibility event: ${event?.eventType} from ${event?.packageName}")
 
         // P4.2: Get root window
+        // NOTE: rootInActiveWindow returns the UI tree of the currently ACTIVE window
+        // If android-vox is in foreground, this will be android-vox's tree
+        // For Phase 7: target app must be in foreground to capture its tree
         val rootNode = rootInActiveWindow
         if (rootNode != null) {
             Log.d(TAG, "Got root window: package=${rootNode.packageName}, " +
