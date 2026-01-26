@@ -392,10 +392,41 @@ class VoxAccessibilityService : AccessibilityService() {
         }
 
         try {
-            return scrollForward(rootNode)
+            // Find a scrollable node in the tree
+            val scrollableNode = findScrollableNode(rootNode)
+            if (scrollableNode != null) {
+                val success = scrollForward(scrollableNode)
+                scrollableNode.recycle()
+                return success
+            } else {
+                Log.w(TAG, "No scrollable node found in active window")
+                return false
+            }
         } finally {
             rootNode.recycle()
         }
+    }
+
+    private fun findScrollableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // Check if this node is scrollable
+        if (node.isScrollable) {
+            return node
+        }
+
+        // Search children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                val found = findScrollableNode(child)
+                if (found != null) {
+                    child.recycle()
+                    return found
+                }
+                child.recycle()
+            }
+        }
+
+        return null
     }
 
     // P5.6: Back action works
