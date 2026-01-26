@@ -13,6 +13,17 @@
 
 set -e
 
+# Set JAVA_HOME to Android Studio's bundled JDK (requires JDK 17+)
+if [ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]; then
+    export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+elif [ -n "$JAVA_HOME" ]; then
+    # Use existing JAVA_HOME if set
+    :
+else
+    echo "Warning: JAVA_HOME not set and Android Studio JBR not found."
+    echo "Build may fail. Set JAVA_HOME to a JDK 17+ installation."
+fi
+
 # Default values
 ACTION="launch"
 CLEAN=false
