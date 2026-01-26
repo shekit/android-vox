@@ -202,7 +202,7 @@
           "id": "P6.1",
           "description": "HTTP client added (OkHttp)",
           "test": "Dependency compiles",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P6.2",
@@ -266,6 +266,43 @@
           "passes": false
         }
       ]
+    },
+    {
+      "id": "S1",
+      "name": "Virtual Display Spike",
+      "type": "spike",
+      "testable_outcome": "Determine if accessibility service can read/control apps on virtual displays",
+      "rationale": "The end goal is a blank screen where all app control happens invisibly via voice. Apps would run on off-screen virtual displays while Claude controls them. This spike validates whether Android's accessibility APIs work with virtual displays — if not, fallback strategies (brief visible flashes, screenshot+vision, API-only tasks) will be needed.",
+      "features": [
+        {
+          "id": "S1.1",
+          "description": "Create virtual display programmatically",
+          "test": "DisplayManager.createVirtualDisplay() returns non-null display",
+          "passes": false
+        },
+        {
+          "id": "S1.2",
+          "description": "Launch app on virtual display",
+          "test": "Settings app launches on virtual display (not visible on main screen)",
+          "passes": false
+        },
+        {
+          "id": "S1.3",
+          "description": "Accessibility service can read virtual display UI tree",
+          "test": "Can retrieve AccessibilityNodeInfo tree for app on virtual display",
+          "passes": false
+        },
+        {
+          "id": "S1.4",
+          "description": "Actions work on virtual display",
+          "test": "Can tap a button in app running on virtual display",
+          "passes": false
+        }
+      ],
+      "outcomes": {
+        "success": "Full invisible control is possible. Core architecture validated for voice-only UX.",
+        "failure": "Fall back to: (a) brief visible app flashes, (b) screenshot+vision control, or (c) API-only tasks"
+      }
     }
   ]
 }
