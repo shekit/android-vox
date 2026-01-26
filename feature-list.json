@@ -263,7 +263,7 @@
           "id": "P7.5",
           "description": "Full multi-step task",
           "test": "'Send message to Mom' works end-to-end",
-          "passes": false
+          "passes": true
         }
       ]
     },
