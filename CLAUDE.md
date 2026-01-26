@@ -145,3 +145,25 @@ adb shell dumpsys activity activities | grep -A5 "mResumed"  # Current activity
 - Target SDK: 34 (Android 14)
 - Package name: `com.vox.android`
 - Use Material 3 components where UI is needed
+
+## API Key Setup
+
+The Claude API key is stored in `local.properties` (gitignored) and injected at build time.
+
+**Setup:**
+1. Copy `local.properties.example` to `local.properties`
+2. Add your API key: `CLAUDE_API_KEY=sk-ant-xxxxx`
+
+**In build.gradle.kts** (when Phase 6 is implemented):
+```kotlin
+android {
+    defaultConfig {
+        buildConfigField("String", "CLAUDE_API_KEY", "\"${properties["CLAUDE_API_KEY"]}\"")
+    }
+}
+```
+
+**In code:**
+```kotlin
+val apiKey = BuildConfig.CLAUDE_API_KEY
+```

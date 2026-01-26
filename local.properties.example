@@ -1,0 +1,8 @@
+# Copy this file to local.properties and fill in your values
+# DO NOT commit local.properties to git
+
+# Android SDK location (auto-detected by Android Studio, but can be set manually)
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+
+# Claude API key for development
+CLAUDE_API_KEY=sk-ant-xxxxx
