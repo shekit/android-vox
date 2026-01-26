@@ -147,40 +147,46 @@
     {
       "id": "P5",
       "name": "Action Execution",
-      "testable_outcome": "Type 'tap Wi-Fi' in Settings, watch it actually tap",
+      "testable_outcome": "Launch Settings, type 'tap Wi-Fi', watch it actually tap",
       "features": [
         {
           "id": "P5.1",
+          "description": "Launch app by package name",
+          "test": "Launch Settings via com.android.settings package, verify it opens",
+          "passes": false
+        },
+        {
+          "id": "P5.2",
           "description": "Find node by text/id",
           "test": "Can locate a node matching criteria",
           "passes": false
         },
         {
-          "id": "P5.2",
+          "id": "P5.3",
           "description": "Tap action works",
           "test": "ACTION_CLICK taps the node",
           "passes": false
         },
         {
-          "id": "P5.3",
+          "id": "P5.4",
           "description": "Type text action works",
           "test": "ACTION_SET_TEXT fills an EditText",
           "passes": false
         },
         {
-          "id": "P5.4",
+          "id": "P5.5",
           "description": "Scroll action works",
           "test": "ACTION_SCROLL_FORWARD scrolls a list",
           "passes": false
         },
         {
-          "id": "P5.5",
+          "id": "P5.6",
           "description": "Back action works",
           "test": "GLOBAL_ACTION_BACK navigates back",
           "passes": false
         },
         {
-          "id": "P5.6",
+          "id": "P5.7",
           "description": "Action input in test UI",
           "test": "Type 'tap X' and execute it",
           "passes": false
