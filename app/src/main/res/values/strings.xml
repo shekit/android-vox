@@ -4,5 +4,6 @@
     <string name="app_ready">Vox Ready</string>
     <string name="hint_command">Enter command…</string>
     <string name="button_send">Send</string>
+    <string name="button_capture">Capture UI Tree</string>
     <string name="accessibility_service_description">Allows Vox to read and interact with app interfaces on your behalf.</string>
 </resources>

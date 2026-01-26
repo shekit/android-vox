@@ -15,6 +15,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var editCommand: EditText
     private lateinit var buttonSend: Button
+    private lateinit var buttonCapture: Button
     private lateinit var textResponse: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,6 +25,7 @@ class MainActivity : AppCompatActivity() {
 
         editCommand = findViewById(R.id.editCommand)
         buttonSend = findViewById(R.id.buttonSend)
+        buttonCapture = findViewById(R.id.buttonCapture)
         textResponse = findViewById(R.id.textResponse)
 
         buttonSend.setOnClickListener {
@@ -31,6 +33,20 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Send button clicked with command: $command")
             textResponse.text = command
             editCommand.text.clear()
+        }
+
+        // P4.6: Capture button triggers tree fetch
+        buttonCapture.setOnClickListener {
+            Log.d(TAG, "Capture button clicked")
+            val treeJson = VoxAccessibilityService.getLatestTree()
+            if (treeJson.isNotEmpty()) {
+                // P4.5: Display tree in UI
+                textResponse.text = treeJson
+                Log.d(TAG, "Displayed tree JSON (${treeJson.length} chars)")
+            } else {
+                textResponse.text = "No UI tree available yet. Open another app and come back."
+                Log.w(TAG, "No tree data available")
+            }
         }
     }
 

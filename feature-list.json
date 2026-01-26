@@ -134,13 +134,13 @@
           "id": "P4.5",
           "description": "Display tree in test app UI",
           "test": "See JSON text in the response area",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P4.6",
           "description": "Capture button triggers tree fetch",
           "test": "Press button, see current foreground app's tree",
-          "passes": false
+          "passes": true
         }
       ]
     },

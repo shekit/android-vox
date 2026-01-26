@@ -11,6 +11,13 @@ class VoxAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "VoxAccessibility"
+
+        // Shared storage for the latest UI tree (P4.5)
+        @Volatile
+        var latestTreeJson: String = ""
+            private set
+
+        fun getLatestTree(): String = latestTreeJson
     }
 
     override fun onServiceConnected() {
@@ -35,7 +42,9 @@ class VoxAccessibilityService : AccessibilityService() {
 
                 // P4.4: Serialize tree to JSON
                 val jsonTree = serializeTreeToJson(rootNode)
-                Log.d(TAG, "JSON tree: ${jsonTree.toString().take(500)}...") // Log first 500 chars
+                val jsonString = jsonTree.toString()
+                latestTreeJson = jsonString
+                Log.d(TAG, "JSON tree: ${jsonString.take(500)}...") // Log first 500 chars
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing tree", e)
             }
