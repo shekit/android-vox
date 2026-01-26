@@ -189,7 +189,7 @@
           "id": "P5.7",
           "description": "Action input in test UI",
           "test": "Type 'tap X' and execute it",
-          "passes": false
+          "passes": true
         }
       ]
     },

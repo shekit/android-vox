@@ -30,22 +30,65 @@ class MainActivity : AppCompatActivity() {
         buttonLaunchApp = findViewById(R.id.buttonLaunchApp)
         textResponse = findViewById(R.id.textResponse)
 
+        // P5.7: Action input in test UI
         buttonSend.setOnClickListener {
-            val command = editCommand.text.toString()
+            val command = editCommand.text.toString().trim()
             Log.d(TAG, "Send button clicked with command: $command")
 
-            // P5.6: Test back action
-            if (command.equals("back", ignoreCase = true)) {
-                val service = VoxAccessibilityService.getInstance()
-                if (service != null) {
-                    val success = service.pressBack()
-                    textResponse.text = if (success) "Pressed back button" else "Back action failed"
-                } else {
-                    textResponse.text = "Accessibility service not running"
-                }
-            } else {
-                textResponse.text = command
+            val service = VoxAccessibilityService.getInstance()
+            if (service == null) {
+                textResponse.text = "Accessibility service not running. Please enable it in Settings."
+                editCommand.text.clear()
+                return@setOnClickListener
             }
+
+            // Parse and execute commands
+            val result = when {
+                command.equals("back", ignoreCase = true) -> {
+                    val success = service.pressBack()
+                    if (success) "Pressed back button" else "Back action failed"
+                }
+                command.equals("home", ignoreCase = true) -> {
+                    val success = service.pressHome()
+                    if (success) "Pressed home button" else "Home action failed"
+                }
+                command.startsWith("tap ", ignoreCase = true) -> {
+                    val text = command.substring(4).trim()
+                    val success = service.tapByText(text)
+                    if (success) "Tapped '$text'" else "Could not find/tap '$text'"
+                }
+                command.startsWith("type ", ignoreCase = true) -> {
+                    val parts = command.substring(5).split(" into ", limit = 2)
+                    if (parts.size == 2) {
+                        val textToType = parts[0].trim()
+                        val nodeText = parts[1].trim()
+                        val success = service.typeTextByText(nodeText, textToType)
+                        if (success) "Typed '$textToType' into '$nodeText'" else "Could not type into '$nodeText'"
+                    } else {
+                        "Usage: type <text> into <field>"
+                    }
+                }
+                command.startsWith("launch ", ignoreCase = true) -> {
+                    val appName = command.substring(7).trim()
+                    val packageName = when (appName.lowercase()) {
+                        "settings" -> "com.android.settings"
+                        "messages" -> "com.google.android.apps.messaging"
+                        "chrome" -> "com.android.chrome"
+                        else -> appName // Assume it's a package name
+                    }
+                    val success = service.launchApp(packageName)
+                    if (success) "Launched $appName" else "Could not launch $appName"
+                }
+                command.equals("scroll down", ignoreCase = true) || command.equals("scroll", ignoreCase = true) -> {
+                    val success = service.scrollForwardInActiveWindow()
+                    if (success) "Scrolled down" else "Could not scroll"
+                }
+                else -> {
+                    "Unknown command. Try: tap <text>, launch <app>, back, home, scroll down"
+                }
+            }
+
+            textResponse.text = result
             editCommand.text.clear()
         }
 
