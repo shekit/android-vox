@@ -85,7 +85,7 @@
           "id": "P3.3",
           "description": "Service config XML created",
           "test": "No resource errors",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P3.4",
