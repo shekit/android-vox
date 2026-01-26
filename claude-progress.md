@@ -2,10 +2,43 @@
 
 ## Current Status
 
-**Phase**: Phase 7 Complete (MVP Complete!)
-**State**: Autonomous command loop working - Claude analyzes UI, decides actions, executes them in a loop until done
+**Phase**: Phase 7 Complete + Enhancements
+**State**: Autonomous command loop with action history - Claude has memory of previous steps for better multi-step navigation
 
 ## Session History
+
+### Session 9 — 2026-01-26
+**Focus**: Phase 7 Enhancement - Action History Context
+
+**Completed**:
+- Added action history to Claude's prompt for context across loop iterations
+- Modified ClaudeApiClient.sendRequest() to accept previousActions parameter
+- Updated buildRequestBody() to include action history in system prompt
+- Enhanced runCommandLoop() to build and pass action history string
+- Action history format: "Step 1: launch settings\nStep 2: tap Network & internet\n..."
+
+**Implementation Details**:
+- Claude now receives context of all previous actions taken in the loop
+- Action history is brief and concise (just the action commands)
+- History is accumulated and passed through recursive runCommandLoop() calls
+- This gives Claude memory of what it's already done, enabling smarter navigation decisions
+
+**Rationale**:
+- Previously, Claude had no memory of previous actions - each step was blind to what came before
+- With action history, Claude can build on previous steps and avoid repeating actions
+- Should improve multi-step task execution by providing context
+
+**UI Cleanup**:
+- Removed debug buttons (Send, Capture, Launch Settings) that were confusing Claude
+- UI now only has: API key input, Command input, Ask Claude button, Response area
+- Cleaner UI tree means Claude won't see test buttons and get confused
+
+**Next Steps**:
+- Test action history with a complete end-to-end task (e.g., "turn on internet")
+- Verify Claude makes better navigation decisions with action context
+- Only declare MVP truly complete after one full autonomous task succeeds
+
+---
 
 ### Session 8 — 2026-01-26
 **Focus**: Phase 7 - Autonomous Command Loop
