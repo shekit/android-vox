@@ -245,19 +245,19 @@
           "id": "P7.2",
           "description": "Loop continues until done",
           "test": "Claude says 'done', loop stops",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P7.3",
           "description": "Status updates during loop",
           "test": "See 'Step 1... Step 2...' in UI",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P7.4",
           "description": "Error handling",
           "test": "Bad action doesn't crash, shows error",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P7.5",

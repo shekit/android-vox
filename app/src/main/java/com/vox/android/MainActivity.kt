@@ -1,6 +1,7 @@
 package com.vox.android
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -54,7 +55,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // P6.3, P6.4, P6.5: Ask Claude button + P7.1: Execute action
+        // P7.2, P7.3, P7.4: Ask Claude button - runs autonomous command loop
         buttonAskClaude.setOnClickListener {
             val command = editCommand.text.toString().trim()
             Log.d(TAG, "Ask Claude button clicked with command: $command")
@@ -83,42 +84,10 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            textResponse.text = "Asking Claude..."
-            Log.d(TAG, "Sending to Claude API: command=$command, tree size=${uiTree.length}")
-
-            // P6.3: Send request to Claude
-            val client = ClaudeApiClient(apiKey)
-            client.sendRequest(command, uiTree) { success, response, error ->
-                runOnUiThread {
-                    if (success && response != null) {
-                        // P6.4: Parse Claude response
-                        val parsed = ClaudeResponseParser.parseResponse(response)
-                        if (parsed.success) {
-                            // P6.5: Display Claude response in UI
-                            val action = parsed.action
-                            textResponse.text = "Claude says: $action"
-                            Log.d(TAG, "Claude response: $action")
-
-                            // P7.1: Execute the action
-                            if (action.lowercase() != "done") {
-                                android.os.Handler(mainLooper).postDelayed({
-                                    val result = executeAction(action, service)
-                                    textResponse.text = "Claude: $action\nResult: $result"
-                                    Log.d(TAG, "Action executed: $result")
-                                }, 500) // Small delay to update UI
-                            }
-                        } else {
-                            textResponse.text = "Parse error: ${parsed.rawText}"
-                            Log.e(TAG, "Parse error: ${parsed.rawText}")
-                        }
-                    } else {
-                        textResponse.text = "API error: $error"
-                        Log.e(TAG, "API error: $error")
-                    }
-                }
-            }
-
             editCommand.text.clear()
+
+            // P7.2: Start the command loop
+            runCommandLoop(command, apiKey, service)
         }
 
         // P5.7: Action input in test UI
@@ -263,6 +232,108 @@ class MainActivity : AppCompatActivity() {
     fun getApiKey(): String? {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_API_KEY, null)
+    }
+
+    // P7.2, P7.3, P7.4: Run autonomous command loop
+    private fun runCommandLoop(
+        userCommand: String,
+        apiKey: String,
+        service: VoxAccessibilityService,
+        stepNumber: Int = 1,
+        statusLog: String = ""
+    ) {
+        Log.d(TAG, "Command loop step $stepNumber")
+
+        // P7.3: Update status
+        val status = if (statusLog.isEmpty()) {
+            "Starting: $userCommand\n"
+        } else {
+            statusLog
+        }
+        textResponse.text = status + "Step $stepNumber: Analyzing..."
+
+        // Get current UI tree
+        val uiTree = VoxAccessibilityService.getLatestTree()
+        if (uiTree.isEmpty()) {
+            // P7.4: Error handling
+            val errorMsg = status + "ERROR: No UI tree available"
+            textResponse.text = errorMsg
+            Log.e(TAG, "Command loop failed: no UI tree")
+            return
+        }
+
+        // Send request to Claude
+        val client = ClaudeApiClient(apiKey)
+        client.sendRequest(userCommand, uiTree) { success, response, error ->
+            runOnUiThread {
+                if (success && response != null) {
+                    // Parse Claude response
+                    val parsed = ClaudeResponseParser.parseResponse(response)
+                    if (parsed.success) {
+                        val action = parsed.action.trim()
+                        Log.d(TAG, "Step $stepNumber - Claude says: $action")
+
+                        // P7.3: Update status with action
+                        val updatedStatus = status + "Step $stepNumber: $action\n"
+                        textResponse.text = updatedStatus
+
+                        // P7.2: Check if done
+                        if (action.equals("done", ignoreCase = true)) {
+                            textResponse.text = updatedStatus + "\nTask complete!"
+                            Log.d(TAG, "Command loop finished - task complete")
+
+                            // Return to android-vox to show completion message
+                            android.os.Handler(mainLooper).postDelayed({
+                                val intent = Intent(this, MainActivity::class.java)
+                                intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                                startActivity(intent)
+                            }, 1000)
+                            return@runOnUiThread
+                        }
+
+                        // P7.1: Execute the action
+                        android.os.Handler(mainLooper).postDelayed({
+                            // P7.4: Error handling for action execution
+                            try {
+                                val result = executeAction(action, service)
+                                Log.d(TAG, "Step $stepNumber - Execution result: $result")
+
+                                // Check if action failed
+                                if (result.contains("failed", ignoreCase = true) ||
+                                    result.contains("could not", ignoreCase = true) ||
+                                    result.contains("error", ignoreCase = true)) {
+                                    textResponse.text = updatedStatus + "Result: $result\n\nERROR: Action failed"
+                                    Log.e(TAG, "Action failed: $result")
+                                    return@postDelayed
+                                }
+
+                                // Wait for UI to update, then continue loop
+                                android.os.Handler(mainLooper).postDelayed({
+                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus)
+                                }, 1500) // Wait 1.5s for UI to update
+
+                            } catch (e: Exception) {
+                                // P7.4: Error handling
+                                val errorMsg = updatedStatus + "ERROR: ${e.message}"
+                                textResponse.text = errorMsg
+                                Log.e(TAG, "Action execution exception", e)
+                            }
+                        }, 500) // Small delay before executing action
+
+                    } else {
+                        // P7.4: Error handling for parse failure
+                        val errorMsg = status + "ERROR: Failed to parse Claude response - ${parsed.rawText}"
+                        textResponse.text = errorMsg
+                        Log.e(TAG, "Parse error: ${parsed.rawText}")
+                    }
+                } else {
+                    // P7.4: Error handling for API failure
+                    val errorMsg = status + "ERROR: API request failed - $error"
+                    textResponse.text = errorMsg
+                    Log.e(TAG, "API error: $error")
+                }
+            }
+        }
     }
 
     // P7.1: Execute action from Claude's response
