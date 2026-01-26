@@ -60,7 +60,7 @@
           "id": "P2.4",
           "description": "Button echoes input to response",
           "test": "Type 'hello', press send, see 'hello' appear",
-          "passes": false
+          "passes": true
         }
       ]
     },
