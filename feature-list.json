@@ -42,7 +42,7 @@
           "id": "P2.1",
           "description": "EditText for command input",
           "test": "Can tap and type text",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P2.2",
