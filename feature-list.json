@@ -128,7 +128,7 @@
           "id": "P4.4",
           "description": "Serialize tree to JSON",
           "test": "Valid JSON structure",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P4.5",
