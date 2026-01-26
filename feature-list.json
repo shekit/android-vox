@@ -79,7 +79,7 @@
           "id": "P3.2",
           "description": "Service declared in manifest",
           "test": "No manifest errors",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P3.3",
