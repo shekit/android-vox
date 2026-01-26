@@ -2,10 +2,34 @@
 
 ## Current Status
 
-**Phase**: Phase 5 Complete
-**State**: Full action execution working - service can launch apps, find nodes, tap, type, scroll, and navigate
+**Phase**: Phase 6 Complete
+**State**: Claude API integration working - app can send UI trees + commands to Claude and display responses
 
 ## Session History
+
+### Session 7 — 2026-01-26
+**Focus**: Phase 6 - Claude API Integration
+
+**Completed**:
+- P6.1: Added HTTP client (OkHttp 4.12.0) and JSON serialization (kotlinx-serialization-json 1.6.2)
+- P6.2: Implemented API key input/storage using SharedPreferences, key persists across app restarts
+- P6.3: Created ClaudeApiClient for async API requests to Claude (claude-sonnet-4-20250514)
+- P6.4: Created ClaudeResponseParser to extract action commands from Claude's JSON responses
+- P6.5: Added "Ask Claude" button to UI that integrates API client, parser, and response display
+
+**Testing**:
+- User saved API key successfully, verified persistence after app restart
+- Opened Settings app, asked Claude "what do you see?"
+- Claude successfully analyzed the UI tree and responded with "tap send"
+- Full end-to-end flow works: command input → API request → response parsing → UI display
+
+**Implementation Details**:
+- ClaudeApiClient sends UI tree + user command as system prompt to Claude
+- OkHttp handles async network calls with proper error handling
+- Responses displayed in text area with "Claude says: <action>" format
+- Added INTERNET permission to AndroidManifest
+
+---
 
 ### Session 6 — 2026-01-26
 **Focus**: Phase 5 - Action Execution
