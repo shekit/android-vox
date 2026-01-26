@@ -165,7 +165,7 @@
           "id": "P5.3",
           "description": "Tap action works",
           "test": "ACTION_CLICK taps the node",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P5.4",

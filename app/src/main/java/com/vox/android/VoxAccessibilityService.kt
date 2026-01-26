@@ -243,4 +243,67 @@ class VoxAccessibilityService : AccessibilityService() {
 
         return null
     }
+
+    // P5.3: Tap action works
+    fun tapNode(node: AccessibilityNodeInfo): Boolean {
+        return try {
+            // If the node itself is clickable, tap it
+            if (node.isClickable) {
+                val success = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                if (success) {
+                    Log.d(TAG, "Tapped node: ${node.className}, text=${node.text}")
+                } else {
+                    Log.w(TAG, "Tap action returned false for node: ${node.className}")
+                }
+                success
+            } else {
+                // Try to find a clickable parent
+                var parent = node.parent
+                while (parent != null) {
+                    if (parent.isClickable) {
+                        val success = parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                        if (success) {
+                            Log.d(TAG, "Tapped parent node: ${parent.className}, text=${parent.text}")
+                        } else {
+                            Log.w(TAG, "Tap action returned false for parent: ${parent.className}")
+                        }
+                        parent.recycle()
+                        return success
+                    }
+                    val nextParent = parent.parent
+                    parent.recycle()
+                    parent = nextParent
+                }
+                Log.w(TAG, "Node and its parents are not clickable: ${node.className}")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error tapping node", e)
+            false
+        }
+    }
+
+    fun tapByText(text: String): Boolean {
+        val node = findNodeByText(text)
+        return if (node != null) {
+            val success = tapNode(node)
+            node.recycle()
+            success
+        } else {
+            Log.w(TAG, "Cannot tap: node with text '$text' not found")
+            false
+        }
+    }
+
+    fun tapById(resourceId: String): Boolean {
+        val node = findNodeById(resourceId)
+        return if (node != null) {
+            val success = tapNode(node)
+            node.recycle()
+            success
+        } else {
+            Log.w(TAG, "Cannot tap: node with id '$resourceId' not found")
+            false
+        }
+    }
 }

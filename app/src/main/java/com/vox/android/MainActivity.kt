@@ -64,15 +64,14 @@ class MainActivity : AppCompatActivity() {
                     "Failed to launch Settings app"
                 }
 
-                // P5.2: Test finding a node after launching Settings
+                // P5.2 & P5.3: Test finding and tapping a node after launching Settings
                 if (success) {
                     android.os.Handler(mainLooper).postDelayed({
-                        val node = service.findNodeByText("Wi")
-                        if (node != null) {
-                            textResponse.text = "Found node with text 'Wi': ${node.text ?: node.contentDescription}"
-                            node.recycle()
+                        val tapSuccess = service.tapByText("Wi")
+                        if (tapSuccess) {
+                            textResponse.text = "Found and tapped 'Wi' (Wi-Fi) setting"
                         } else {
-                            textResponse.text = "Launched Settings but couldn't find 'Wi' node"
+                            textResponse.text = "Launched Settings but couldn't find/tap 'Wi' node"
                         }
                     }, 1000) // Wait 1 second for Settings to load
                 }
