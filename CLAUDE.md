@@ -42,10 +42,17 @@ After completing each individual feature (e.g., P1.1, P1.2, P1.3):
 ❌ **WRONG**: Complete P1.1, P1.2, P1.3, P1.4, then commit once at end of phase
 ✅ **RIGHT**: Complete P1.1 → commit → Complete P1.2 → commit → Complete P1.3 → commit → etc.
 
+**Only commit files YOU created or modified:**
+- Use `git add <specific-files>` — NOT `git add .` or `git add -A`
+- Do not commit files modified by the user or other sessions
+- Check `git status` first to see what's changed
+- Only stage files you directly worked on for the current feature
+
 This ensures:
 - Progress is never lost
 - Each feature is a recoverable checkpoint
 - Easy to revert if something breaks
+- User changes are not accidentally included
 
 ### Development Feedback Loop
 
