@@ -43,16 +43,6 @@
         android:layout_marginTop="8dp"
         app:layout_constraintTop_toBottomOf="@id/editApiKey"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/buttonSend"
-        android:layout_marginEnd="8dp" />
-
-    <Button
-        android:id="@+id/buttonSend"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/button_send"
-        app:layout_constraintTop_toTopOf="@id/editCommand"
-        app:layout_constraintBottom_toBottomOf="@id/editCommand"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <Button
@@ -65,31 +55,11 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <Button
-        android:id="@+id/buttonCapture"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="@string/button_capture"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/buttonAskClaude"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <Button
-        android:id="@+id/buttonLaunchApp"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="@string/button_launch_app"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/buttonCapture"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/buttonLaunchApp"
+        app:layout_constraintTop_toBottomOf="@id/buttonAskClaude"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
