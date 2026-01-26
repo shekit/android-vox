@@ -157,4 +157,90 @@ class VoxAccessibilityService : AccessibilityService() {
             false
         }
     }
+
+    // P5.2: Find node by text/id
+    fun findNodeByText(text: String): AccessibilityNodeInfo? {
+        val rootNode = rootInActiveWindow ?: run {
+            Log.w(TAG, "Cannot find node: root window is null")
+            return null
+        }
+
+        try {
+            val found = findNodeByTextRecursive(rootNode, text)
+            if (found != null) {
+                Log.d(TAG, "Found node with text '$text': ${found.className}")
+                return found
+            } else {
+                Log.w(TAG, "No node found with text: $text")
+                return null
+            }
+        } finally {
+            rootNode.recycle()
+        }
+    }
+
+    private fun findNodeByTextRecursive(node: AccessibilityNodeInfo, text: String): AccessibilityNodeInfo? {
+        // Check if this node matches
+        if (node.text?.toString()?.contains(text, ignoreCase = true) == true ||
+            node.contentDescription?.toString()?.contains(text, ignoreCase = true) == true) {
+            return node
+        }
+
+        // Search children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                val found = findNodeByTextRecursive(child, text)
+                if (found != null) {
+                    child.recycle()
+                    return found
+                }
+                child.recycle()
+            }
+        }
+
+        return null
+    }
+
+    fun findNodeById(resourceId: String): AccessibilityNodeInfo? {
+        val rootNode = rootInActiveWindow ?: run {
+            Log.w(TAG, "Cannot find node: root window is null")
+            return null
+        }
+
+        try {
+            val found = findNodeByIdRecursive(rootNode, resourceId)
+            if (found != null) {
+                Log.d(TAG, "Found node with id '$resourceId': ${found.className}")
+                return found
+            } else {
+                Log.w(TAG, "No node found with id: $resourceId")
+                return null
+            }
+        } finally {
+            rootNode.recycle()
+        }
+    }
+
+    private fun findNodeByIdRecursive(node: AccessibilityNodeInfo, resourceId: String): AccessibilityNodeInfo? {
+        // Check if this node matches
+        if (node.viewIdResourceName?.contains(resourceId) == true) {
+            return node
+        }
+
+        // Search children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                val found = findNodeByIdRecursive(child, resourceId)
+                if (found != null) {
+                    child.recycle()
+                    return found
+                }
+                child.recycle()
+            }
+        }
+
+        return null
+    }
 }

@@ -63,6 +63,19 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     "Failed to launch Settings app"
                 }
+
+                // P5.2: Test finding a node after launching Settings
+                if (success) {
+                    android.os.Handler(mainLooper).postDelayed({
+                        val node = service.findNodeByText("Wi")
+                        if (node != null) {
+                            textResponse.text = "Found node with text 'Wi': ${node.text ?: node.contentDescription}"
+                            node.recycle()
+                        } else {
+                            textResponse.text = "Launched Settings but couldn't find 'Wi' node"
+                        }
+                    }, 1000) // Wait 1 second for Settings to load
+                }
             } else {
                 textResponse.text = "Accessibility service not running. Please enable it in Settings."
                 Log.e(TAG, "Accessibility service not available")

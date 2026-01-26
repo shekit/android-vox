@@ -159,7 +159,7 @@
           "id": "P5.2",
           "description": "Find node by text/id",
           "test": "Can locate a node matching criteria",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P5.3",
