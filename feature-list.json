@@ -91,7 +91,7 @@
           "id": "P3.4",
           "description": "Service visible in system settings",
           "test": "Find 'android-vox' in Settings → Accessibility",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P3.5",
