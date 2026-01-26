@@ -73,7 +73,7 @@
           "id": "P3.1",
           "description": "AccessibilityService class created",
           "test": "Code compiles",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P3.2",
