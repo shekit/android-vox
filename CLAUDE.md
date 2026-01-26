@@ -1,5 +1,7 @@
 # Claude Instructions for android-vox
 
+> **⚠️ IMPORTANT: Commit after EVERY feature, not at the end of phases. See "CRITICAL: Commit After EVERY Feature" section below.**
+
 ## Project Overview
 
 Voice-first Android interface where Claude controls apps via the Accessibility Service API. The screen is blank except for live transcription — Claude handles navigation and dynamically generates UI as needed.
@@ -25,8 +27,25 @@ Building a minimal test harness:
 
 ### During a Session
 - Work on ONE feature at a time
-- **Commit after each feature** (not after each phase)
 - Update `feature-list.json` when a feature passes/fails
+
+### CRITICAL: Commit After EVERY Feature
+
+**This is a hard requirement. Do not batch commits.**
+
+After completing each individual feature (e.g., P1.1, P1.2, P1.3):
+1. Verify the feature works
+2. Update `feature-list.json` to mark it as `"passes": true`
+3. **Immediately commit** with a message like: `P1.1: Gradle project initializes`
+4. Then move to the next feature
+
+❌ **WRONG**: Complete P1.1, P1.2, P1.3, P1.4, then commit once at end of phase
+✅ **RIGHT**: Complete P1.1 → commit → Complete P1.2 → commit → Complete P1.3 → commit → etc.
+
+This ensures:
+- Progress is never lost
+- Each feature is a recoverable checkpoint
+- Easy to revert if something breaks
 
 ### Development Feedback Loop
 
