@@ -116,7 +116,7 @@
           "id": "P4.2",
           "description": "Service gets root window",
           "test": "getRootInActiveWindow() returns non-null",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P4.3",
