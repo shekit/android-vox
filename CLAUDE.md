@@ -62,11 +62,11 @@ After writing or changing code, always follow this loop:
 Build → Deploy → Check Logs → Understand → Fix → Repeat
 ```
 
-1. **Build**: `./gradlew assembleDebug`
+1. **Build**: `./scripts/deploy.sh --build`
    - If build fails, read the error output, fix, rebuild
 
-2. **Deploy & Launch**: `./gradlew installDebug && adb shell am start -n com.vox.android/.MainActivity`
-   - Or use `./scripts/deploy.sh --launch`
+2. **Deploy & Launch**: `./scripts/deploy.sh --launch`
+   - Builds, installs, and launches in one command
 
 3. **Check Logs**: `adb logcat -d | grep -i "vox\|exception\|error\|crash"`
    - Look for crashes, exceptions, and app-specific logs
