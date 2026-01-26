@@ -8,6 +8,29 @@
     android:padding="16dp">
 
     <EditText
+        android:id="@+id/editApiKey"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_api_key"
+        android:textColor="@android:color/white"
+        android:textColorHint="#888888"
+        android:backgroundTint="@android:color/white"
+        android:inputType="textPassword"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/buttonSaveApiKey"
+        android:layout_marginEnd="8dp" />
+
+    <Button
+        android:id="@+id/buttonSaveApiKey"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/button_save_api_key"
+        app:layout_constraintTop_toTopOf="@id/editApiKey"
+        app:layout_constraintBottom_toBottomOf="@id/editApiKey"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <EditText
         android:id="@+id/editCommand"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -17,7 +40,8 @@
         android:backgroundTint="@android:color/white"
         android:inputType="text"
         android:imeOptions="actionSend"
-        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/editApiKey"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@id/buttonSend"
         android:layout_marginEnd="8dp" />

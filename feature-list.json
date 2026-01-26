@@ -208,7 +208,7 @@
           "id": "P6.2",
           "description": "API key input/storage",
           "test": "Can enter and persist API key",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P6.3",

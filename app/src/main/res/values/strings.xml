@@ -7,4 +7,6 @@
     <string name="button_capture">Capture UI Tree</string>
     <string name="button_launch_app">Launch Settings</string>
     <string name="accessibility_service_description">Allows Vox to read and interact with app interfaces on your behalf.</string>
+    <string name="hint_api_key">Claude API Key (sk-ant-…)</string>
+    <string name="button_save_api_key">Save API Key</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.vox.android
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -11,8 +12,12 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "VoxMain"
+        private const val PREFS_NAME = "VoxPrefs"
+        private const val KEY_API_KEY = "claude_api_key"
     }
 
+    private lateinit var editApiKey: EditText
+    private lateinit var buttonSaveApiKey: Button
     private lateinit var editCommand: EditText
     private lateinit var buttonSend: Button
     private lateinit var buttonCapture: Button
@@ -24,11 +29,28 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "MainActivity onCreate")
         setContentView(R.layout.activity_main)
 
+        editApiKey = findViewById(R.id.editApiKey)
+        buttonSaveApiKey = findViewById(R.id.buttonSaveApiKey)
         editCommand = findViewById(R.id.editCommand)
         buttonSend = findViewById(R.id.buttonSend)
         buttonCapture = findViewById(R.id.buttonCapture)
         buttonLaunchApp = findViewById(R.id.buttonLaunchApp)
         textResponse = findViewById(R.id.textResponse)
+
+        // P6.2: Load saved API key
+        loadApiKey()
+
+        // P6.2: Save API key button
+        buttonSaveApiKey.setOnClickListener {
+            val apiKey = editApiKey.text.toString().trim()
+            if (apiKey.isNotEmpty()) {
+                saveApiKey(apiKey)
+                textResponse.text = "API key saved successfully"
+                Log.d(TAG, "API key saved")
+            } else {
+                textResponse.text = "Please enter an API key"
+            }
+        }
 
         // P5.7: Action input in test UI
         buttonSend.setOnClickListener {
@@ -151,5 +173,26 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "MainActivity onResume")
+    }
+
+    // P6.2: API key storage functions
+    private fun saveApiKey(apiKey: String) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_API_KEY, apiKey).apply()
+        Log.d(TAG, "API key saved to SharedPreferences")
+    }
+
+    private fun loadApiKey() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedKey = prefs.getString(KEY_API_KEY, "")
+        if (!savedKey.isNullOrEmpty()) {
+            editApiKey.setText(savedKey)
+            Log.d(TAG, "API key loaded from SharedPreferences")
+        }
+    }
+
+    fun getApiKey(): String? {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_API_KEY, null)
     }
 }
