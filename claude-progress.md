@@ -2,10 +2,22 @@
 
 ## Current Status
 
-**Phase**: Phase 2 Complete
-**State**: Test UI complete with command input, send button, and echo functionality
+**Phase**: Phase 3 Complete
+**State**: Accessibility service registered, can be enabled, receives events
 
 ## Session History
+
+### Session 4 — 2026-01-26
+**Focus**: Phase 3 - Accessibility Service Setup
+
+**Completed**:
+- P3.1: Created VoxAccessibilityService class with onServiceConnected, onAccessibilityEvent, onInterrupt handlers
+- P3.2: Declared service in AndroidManifest.xml with BIND_ACCESSIBILITY_SERVICE permission
+- P3.3: Created accessibility_service_config.xml with full event access and window content retrieval
+- P3.4: Verified service is registered in system (visible in Settings → Accessibility)
+- P3.5: Enabled service via ADB, confirmed "Accessibility service connected" log and event reception
+
+---
 
 ### Session 3 — 2026-01-26
 **Focus**: Phase 2 - Test UI
