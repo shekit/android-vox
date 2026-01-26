@@ -214,19 +214,19 @@
           "id": "P6.3",
           "description": "Send request to Claude",
           "test": "Network call succeeds",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P6.4",
           "description": "Parse Claude response",
           "test": "Extract action from response JSON",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P6.5",
           "description": "Display Claude response in UI",
           "test": "See what Claude said",
-          "passes": false
+          "passes": true
         }
       ]
     },

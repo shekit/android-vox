@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonSaveApiKey: Button
     private lateinit var editCommand: EditText
     private lateinit var buttonSend: Button
+    private lateinit var buttonAskClaude: Button
     private lateinit var buttonCapture: Button
     private lateinit var buttonLaunchApp: Button
     private lateinit var textResponse: TextView
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
         buttonSaveApiKey = findViewById(R.id.buttonSaveApiKey)
         editCommand = findViewById(R.id.editCommand)
         buttonSend = findViewById(R.id.buttonSend)
+        buttonAskClaude = findViewById(R.id.buttonAskClaude)
         buttonCapture = findViewById(R.id.buttonCapture)
         buttonLaunchApp = findViewById(R.id.buttonLaunchApp)
         textResponse = findViewById(R.id.textResponse)
@@ -50,6 +52,63 @@ class MainActivity : AppCompatActivity() {
             } else {
                 textResponse.text = "Please enter an API key"
             }
+        }
+
+        // P6.3, P6.4, P6.5: Ask Claude button
+        buttonAskClaude.setOnClickListener {
+            val command = editCommand.text.toString().trim()
+            Log.d(TAG, "Ask Claude button clicked with command: $command")
+
+            if (command.isEmpty()) {
+                textResponse.text = "Please enter a command"
+                return@setOnClickListener
+            }
+
+            val apiKey = getApiKey()
+            if (apiKey.isNullOrEmpty()) {
+                textResponse.text = "Please save your API key first"
+                return@setOnClickListener
+            }
+
+            val service = VoxAccessibilityService.getInstance()
+            if (service == null) {
+                textResponse.text = "Accessibility service not running. Please enable it in Settings."
+                return@setOnClickListener
+            }
+
+            // Get current UI tree
+            val uiTree = VoxAccessibilityService.getLatestTree()
+            if (uiTree.isEmpty()) {
+                textResponse.text = "No UI tree available. Open another app first."
+                return@setOnClickListener
+            }
+
+            textResponse.text = "Asking Claude..."
+            Log.d(TAG, "Sending to Claude API: command=$command, tree size=${uiTree.length}")
+
+            // P6.3: Send request to Claude
+            val client = ClaudeApiClient(apiKey)
+            client.sendRequest(command, uiTree) { success, response, error ->
+                runOnUiThread {
+                    if (success && response != null) {
+                        // P6.4: Parse Claude response
+                        val parsed = ClaudeResponseParser.parseResponse(response)
+                        if (parsed.success) {
+                            // P6.5: Display Claude response in UI
+                            textResponse.text = "Claude says: ${parsed.action}"
+                            Log.d(TAG, "Claude response: ${parsed.action}")
+                        } else {
+                            textResponse.text = "Parse error: ${parsed.rawText}"
+                            Log.e(TAG, "Parse error: ${parsed.rawText}")
+                        }
+                    } else {
+                        textResponse.text = "API error: $error"
+                        Log.e(TAG, "API error: $error")
+                    }
+                }
+            }
+
+            editCommand.text.clear()
         }
 
         // P5.7: Action input in test UI
