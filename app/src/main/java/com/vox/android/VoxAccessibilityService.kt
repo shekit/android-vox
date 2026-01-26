@@ -1,6 +1,7 @@
 package com.vox.android
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -18,10 +19,17 @@ class VoxAccessibilityService : AccessibilityService() {
             private set
 
         fun getLatestTree(): String = latestTreeJson
+
+        // Shared reference to the service instance (P5.1)
+        @Volatile
+        private var instance: VoxAccessibilityService? = null
+
+        fun getInstance(): VoxAccessibilityService? = instance
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instance = this
         Log.d(TAG, "Accessibility service connected")
     }
 
@@ -127,6 +135,26 @@ class VoxAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         Log.d(TAG, "Accessibility service destroyed")
+    }
+
+    // P5.1: Launch app by package name
+    fun launchApp(packageName: String): Boolean {
+        return try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                Log.d(TAG, "Launched app: $packageName")
+                true
+            } else {
+                Log.e(TAG, "No launch intent found for package: $packageName")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error launching app $packageName", e)
+            false
+        }
     }
 }
