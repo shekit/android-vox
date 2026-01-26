@@ -80,10 +80,7 @@ Build → Deploy → Check Logs → Understand → Fix → Repeat
 
 5. **Fix & Repeat**: If something's wrong, fix it and go back to step 1
 
-6. **Clean Up**: After verifying the feature works, quit the app:
-   ```bash
-   adb shell am force-stop com.vox.android
-   ```
+6. **Clean Up**: After verifying the feature works, quit the app using ADB
    - Do NOT leave the app running after your tests
    - Only leave it running if you want the user to manually test something
    - If you want user testing, explicitly say so: "Please test X on the device"
