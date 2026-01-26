@@ -5,6 +5,18 @@
 
 set -e
 
+# Set JAVA_HOME to Android Studio's bundled JDK (requires JDK 17+)
+if [ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]; then
+    export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
+# Set ANDROID_HOME if not set but SDK exists in default location
+if [ -z "$ANDROID_HOME" ] && [ -d "$HOME/Library/Android/sdk" ]; then
+    export ANDROID_HOME="$HOME/Library/Android/sdk"
+    export PATH="$ANDROID_HOME/platform-tools:$PATH"
+fi
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,11 +29,19 @@ echo ""
 
 ERRORS=0
 
-# Check Java
+# Check Java (requires JDK 17+)
 echo -n "Checking Java... "
 if command -v java &> /dev/null; then
     JAVA_VERSION=$(java -version 2>&1 | head -n 1)
-    echo -e "${GREEN}OK${NC} - $JAVA_VERSION"
+    # Extract major version number
+    JAVA_MAJOR=$(java -version 2>&1 | head -n 1 | sed -E 's/.*"([0-9]+).*/\1/')
+    if [ "$JAVA_MAJOR" -ge 17 ] 2>/dev/null; then
+        echo -e "${GREEN}OK${NC} - $JAVA_VERSION"
+    else
+        echo -e "${RED}TOO OLD${NC} - $JAVA_VERSION"
+        echo "  Requires JDK 17+. Install Android Studio or set JAVA_HOME."
+        ERRORS=$((ERRORS + 1))
+    fi
 else
     echo -e "${RED}MISSING${NC}"
     echo "  Install JDK 17+: https://adoptium.net/"
