@@ -2,10 +2,22 @@
 
 ## Current Status
 
-**Phase**: Phase 1 Complete
-**State**: Android project skeleton complete, app builds/installs/launches
+**Phase**: Phase 2 Complete
+**State**: Test UI complete with command input, send button, and echo functionality
 
 ## Session History
+
+### Session 3 — 2026-01-26
+**Focus**: Phase 2 - Test UI
+
+**Completed**:
+- P2.1: Added EditText for command input
+- P2.2: Added Send button
+- P2.3: Added Response TextView in ScrollView
+- P2.4: Wired button to echo input to response area
+- UI on black background with monospace response text
+
+---
 
 ### Session 2 — 2026-01-26
 **Focus**: Phase 1 - Project Skeleton
