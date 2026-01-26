@@ -35,6 +35,7 @@
 - For Phase 7's autonomous loop to work: target app must be in foreground, android-vox runs in background
 - The command loop should: launch target app → capture its UI → ask Claude → execute action → repeat
 - Status updates can be shown via notifications or brief foreground switches
+- **READ PHASE7_NOTES.md for detailed implementation guide**
 
 ---
 
