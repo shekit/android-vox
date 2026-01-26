@@ -1,0 +1,265 @@
+{
+  "project": "android-vox",
+  "version": "mvp",
+  "phases": [
+    {
+      "id": "P1",
+      "name": "Project Skeleton",
+      "testable_outcome": "App icon appears on device, launches to blank screen",
+      "features": [
+        {
+          "id": "P1.1",
+          "description": "Gradle project initializes",
+          "test": "./gradlew tasks runs without error",
+          "passes": false
+        },
+        {
+          "id": "P1.2",
+          "description": "App module compiles",
+          "test": "./scripts/deploy.sh --build succeeds",
+          "passes": false
+        },
+        {
+          "id": "P1.3",
+          "description": "App installs on device",
+          "test": "./scripts/deploy.sh --install succeeds",
+          "passes": false
+        },
+        {
+          "id": "P1.4",
+          "description": "App launches",
+          "test": "./scripts/deploy.sh --launch opens the app",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "name": "Test UI",
+      "testable_outcome": "Type a command, press send, see it echoed on screen",
+      "features": [
+        {
+          "id": "P2.1",
+          "description": "EditText for command input",
+          "test": "Can tap and type text",
+          "passes": false
+        },
+        {
+          "id": "P2.2",
+          "description": "Send button",
+          "test": "Button visible and clickable",
+          "passes": false
+        },
+        {
+          "id": "P2.3",
+          "description": "Response TextView",
+          "test": "Text area visible below input",
+          "passes": false
+        },
+        {
+          "id": "P2.4",
+          "description": "Button echoes input to response",
+          "test": "Type 'hello', press send, see 'hello' appear",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "id": "P3",
+      "name": "Accessibility Service Setup",
+      "testable_outcome": "Service appears in Settings → Accessibility, can enable it",
+      "features": [
+        {
+          "id": "P3.1",
+          "description": "AccessibilityService class created",
+          "test": "Code compiles",
+          "passes": false
+        },
+        {
+          "id": "P3.2",
+          "description": "Service declared in manifest",
+          "test": "No manifest errors",
+          "passes": false
+        },
+        {
+          "id": "P3.3",
+          "description": "Service config XML created",
+          "test": "No resource errors",
+          "passes": false
+        },
+        {
+          "id": "P3.4",
+          "description": "Service visible in system settings",
+          "test": "Find 'android-vox' in Settings → Accessibility",
+          "passes": false
+        },
+        {
+          "id": "P3.5",
+          "description": "Service can be toggled on",
+          "test": "Enable it, no crash",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "id": "P4",
+      "name": "UI Tree Capture",
+      "testable_outcome": "Open Settings app, switch back, see Settings' UI tree displayed as text",
+      "features": [
+        {
+          "id": "P4.1",
+          "description": "Service receives accessibility events",
+          "test": "Log output on events",
+          "passes": false
+        },
+        {
+          "id": "P4.2",
+          "description": "Service gets root window",
+          "test": "getRootInActiveWindow() returns non-null",
+          "passes": false
+        },
+        {
+          "id": "P4.3",
+          "description": "Traverse AccessibilityNodeInfo tree",
+          "test": "Can iterate all nodes",
+          "passes": false
+        },
+        {
+          "id": "P4.4",
+          "description": "Serialize tree to JSON",
+          "test": "Valid JSON structure",
+          "passes": false
+        },
+        {
+          "id": "P4.5",
+          "description": "Display tree in test app UI",
+          "test": "See JSON text in the response area",
+          "passes": false
+        },
+        {
+          "id": "P4.6",
+          "description": "Capture button triggers tree fetch",
+          "test": "Press button, see current foreground app's tree",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "id": "P5",
+      "name": "Action Execution",
+      "testable_outcome": "Type 'tap Wi-Fi' in Settings, watch it actually tap",
+      "features": [
+        {
+          "id": "P5.1",
+          "description": "Find node by text/id",
+          "test": "Can locate a node matching criteria",
+          "passes": false
+        },
+        {
+          "id": "P5.2",
+          "description": "Tap action works",
+          "test": "ACTION_CLICK taps the node",
+          "passes": false
+        },
+        {
+          "id": "P5.3",
+          "description": "Type text action works",
+          "test": "ACTION_SET_TEXT fills an EditText",
+          "passes": false
+        },
+        {
+          "id": "P5.4",
+          "description": "Scroll action works",
+          "test": "ACTION_SCROLL_FORWARD scrolls a list",
+          "passes": false
+        },
+        {
+          "id": "P5.5",
+          "description": "Back action works",
+          "test": "GLOBAL_ACTION_BACK navigates back",
+          "passes": false
+        },
+        {
+          "id": "P5.6",
+          "description": "Action input in test UI",
+          "test": "Type 'tap X' and execute it",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "id": "P6",
+      "name": "Claude API",
+      "testable_outcome": "Send UI tree + command to Claude, see Claude's response in the app",
+      "features": [
+        {
+          "id": "P6.1",
+          "description": "HTTP client added (OkHttp)",
+          "test": "Dependency compiles",
+          "passes": false
+        },
+        {
+          "id": "P6.2",
+          "description": "API key input/storage",
+          "test": "Can enter and persist API key",
+          "passes": false
+        },
+        {
+          "id": "P6.3",
+          "description": "Send request to Claude",
+          "test": "Network call succeeds",
+          "passes": false
+        },
+        {
+          "id": "P6.4",
+          "description": "Parse Claude response",
+          "test": "Extract action from response JSON",
+          "passes": false
+        },
+        {
+          "id": "P6.5",
+          "description": "Display Claude response in UI",
+          "test": "See what Claude said",
+          "passes": false
+        }
+      ]
+    },
+    {
+      "id": "P7",
+      "name": "Command Loop",
+      "testable_outcome": "'Open Messages and tap Compose' executes multi-step automatically",
+      "features": [
+        {
+          "id": "P7.1",
+          "description": "Single command → action cycle",
+          "test": "One command executes one action",
+          "passes": false
+        },
+        {
+          "id": "P7.2",
+          "description": "Loop continues until done",
+          "test": "Claude says 'done', loop stops",
+          "passes": false
+        },
+        {
+          "id": "P7.3",
+          "description": "Status updates during loop",
+          "test": "See 'Step 1... Step 2...' in UI",
+          "passes": false
+        },
+        {
+          "id": "P7.4",
+          "description": "Error handling",
+          "test": "Bad action doesn't crash, shows error",
+          "passes": false
+        },
+        {
+          "id": "P7.5",
+          "description": "Full multi-step task",
+          "test": "'Send message to Mom' works end-to-end",
+          "passes": false
+        }
+      ]
+    }
+  ]
+}
