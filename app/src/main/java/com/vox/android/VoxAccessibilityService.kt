@@ -17,7 +17,7 @@ class VoxAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Will handle accessibility events in Phase 4
-        Log.v(TAG, "Accessibility event: ${event?.eventType}")
+        Log.d(TAG, "Accessibility event: ${event?.eventType} from ${event?.packageName}")
     }
 
     override fun onInterrupt() {

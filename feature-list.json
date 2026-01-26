@@ -110,7 +110,7 @@
           "id": "P4.1",
           "description": "Service receives accessibility events",
           "test": "Log output on events",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P4.2",
