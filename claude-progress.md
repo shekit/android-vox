@@ -2,10 +2,28 @@
 
 ## Current Status
 
-**Phase**: Phase 3 Complete
-**State**: Accessibility service registered, can be enabled, receives events
+**Phase**: Phase 4 Complete
+**State**: Full UI tree capture working - service captures and serializes accessibility trees, displays in app UI
 
 ## Session History
+
+### Session 5 — 2026-01-26
+**Focus**: Phase 4 - UI Tree Capture
+
+**Completed**:
+- P4.1: Service receives accessibility events (debug logging verified)
+- P4.2: Service gets root window via rootInActiveWindow (logs package, childCount, className)
+- P4.3: Traverse AccessibilityNodeInfo tree recursively (tested with 52+ node trees)
+- P4.4: Serialize tree to JSON with all properties (className, text, bounds, state flags, children)
+- P4.5: Display tree in test app UI (JSON shown in scrollable TextView)
+- P4.6: Capture button triggers tree fetch (retrieves latest tree from shared storage)
+
+**Testing**:
+- Opened Settings app (136 nodes), captured and displayed full JSON tree
+- Tested with Telegram app (54 nodes), vox app (12 nodes)
+- All node properties correctly serialized including bounds, clickability, text content
+
+---
 
 ### Session 4 — 2026-01-26
 **Focus**: Phase 3 - Accessibility Service Setup
