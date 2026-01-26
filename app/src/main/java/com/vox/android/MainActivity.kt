@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // P6.3, P6.4, P6.5: Ask Claude button
+        // P6.3, P6.4, P6.5: Ask Claude button + P7.1: Execute action
         buttonAskClaude.setOnClickListener {
             val command = editCommand.text.toString().trim()
             Log.d(TAG, "Ask Claude button clicked with command: $command")
@@ -95,8 +95,18 @@ class MainActivity : AppCompatActivity() {
                         val parsed = ClaudeResponseParser.parseResponse(response)
                         if (parsed.success) {
                             // P6.5: Display Claude response in UI
-                            textResponse.text = "Claude says: ${parsed.action}"
-                            Log.d(TAG, "Claude response: ${parsed.action}")
+                            val action = parsed.action
+                            textResponse.text = "Claude says: $action"
+                            Log.d(TAG, "Claude response: $action")
+
+                            // P7.1: Execute the action
+                            if (action.lowercase() != "done") {
+                                android.os.Handler(mainLooper).postDelayed({
+                                    val result = executeAction(action, service)
+                                    textResponse.text = "Claude: $action\nResult: $result"
+                                    Log.d(TAG, "Action executed: $result")
+                                }, 500) // Small delay to update UI
+                            }
                         } else {
                             textResponse.text = "Parse error: ${parsed.rawText}"
                             Log.e(TAG, "Parse error: ${parsed.rawText}")
@@ -253,5 +263,62 @@ class MainActivity : AppCompatActivity() {
     fun getApiKey(): String? {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getString(KEY_API_KEY, null)
+    }
+
+    // P7.1: Execute action from Claude's response
+    private fun executeAction(action: String, service: VoxAccessibilityService): String {
+        Log.d(TAG, "Executing action: $action")
+
+        return when {
+            action.equals("done", ignoreCase = true) -> {
+                "Task complete"
+            }
+            action.equals("back", ignoreCase = true) -> {
+                val success = service.pressBack()
+                if (success) "Pressed back button" else "Back action failed"
+            }
+            action.equals("home", ignoreCase = true) -> {
+                val success = service.pressHome()
+                if (success) "Pressed home button" else "Home action failed"
+            }
+            action.startsWith("tap ", ignoreCase = true) -> {
+                val text = action.substring(4).trim()
+                val success = service.tapByText(text)
+                if (success) "Tapped '$text'" else "Could not find/tap '$text'"
+            }
+            action.startsWith("type ", ignoreCase = true) -> {
+                val parts = action.substring(5).split(" into ", limit = 2)
+                if (parts.size == 2) {
+                    val textToType = parts[0].trim()
+                    val nodeText = parts[1].trim()
+                    val success = service.typeTextByText(nodeText, textToType)
+                    if (success) "Typed '$textToType' into '$nodeText'" else "Could not type into '$nodeText'"
+                } else {
+                    "Invalid type command format. Expected: type <text> into <field>"
+                }
+            }
+            action.startsWith("launch ", ignoreCase = true) -> {
+                val appName = action.substring(7).trim()
+                val packageName = when (appName.lowercase()) {
+                    "settings" -> "com.android.settings"
+                    "messages" -> "com.google.android.apps.messaging"
+                    "chrome" -> "com.android.chrome"
+                    else -> appName // Assume it's a package name
+                }
+                val success = service.launchApp(packageName)
+                if (success) "Launched $appName" else "Could not launch $appName"
+            }
+            action.equals("scroll down", ignoreCase = true) || action.equals("scroll", ignoreCase = true) -> {
+                val success = service.scrollForwardInActiveWindow()
+                if (success) "Scrolled down" else "Could not scroll"
+            }
+            action.equals("scroll up", ignoreCase = true) -> {
+                // Note: scroll up is not implemented in VoxAccessibilityService yet
+                "Scroll up not implemented yet"
+            }
+            else -> {
+                "Unknown action: $action"
+            }
+        }
     }
 }

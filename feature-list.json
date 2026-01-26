@@ -239,7 +239,7 @@
           "id": "P7.1",
           "description": "Single command → action cycle",
           "test": "One command executes one action",
-          "passes": false
+          "passes": true
         },
         {
           "id": "P7.2",
