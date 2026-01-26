@@ -117,7 +117,8 @@ class MainActivity : AppCompatActivity() {
         apiKey: String,
         service: VoxAccessibilityService,
         stepNumber: Int = 1,
-        statusLog: String = ""
+        statusLog: String = "",
+        actionHistory: String = ""
     ) {
         Log.d(TAG, "Command loop step $stepNumber")
 
@@ -141,7 +142,7 @@ class MainActivity : AppCompatActivity() {
 
         // Send request to Claude
         val client = ClaudeApiClient(apiKey)
-        client.sendRequest(userCommand, uiTree) { success, response, error ->
+        client.sendRequest(userCommand, uiTree, actionHistory) { success, response, error ->
             runOnUiThread {
                 if (success && response != null) {
                     // Parse Claude response
@@ -186,7 +187,13 @@ class MainActivity : AppCompatActivity() {
 
                                 // Wait for UI to update, then continue loop
                                 android.os.Handler(mainLooper).postDelayed({
-                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus)
+                                    // Add current action to history
+                                    val updatedHistory = if (actionHistory.isEmpty()) {
+                                        "Step $stepNumber: $action"
+                                    } else {
+                                        "$actionHistory\nStep $stepNumber: $action"
+                                    }
+                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus, updatedHistory)
                                 }, 1500) // Wait 1.5s for UI to update
 
                             } catch (e: Exception) {

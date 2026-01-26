@@ -24,13 +24,14 @@ class ClaudeApiClient(private val apiKey: String) {
     fun sendRequest(
         userCommand: String,
         uiTree: String,
+        previousActions: String = "",
         callback: (success: Boolean, response: String?, error: String?) -> Unit
     ) {
         Log.d(TAG, "Sending request to Claude API")
         Log.d(TAG, "Command: $userCommand")
         Log.d(TAG, "UI tree length: ${uiTree.length} chars")
 
-        val requestBody = buildRequestBody(userCommand, uiTree)
+        val requestBody = buildRequestBody(userCommand, uiTree, previousActions)
         val request = Request.Builder()
             .url(API_URL)
             .addHeader("x-api-key", apiKey)
@@ -67,7 +68,13 @@ class ClaudeApiClient(private val apiKey: String) {
         })
     }
 
-    private fun buildRequestBody(userCommand: String, uiTree: String): String {
+    private fun buildRequestBody(userCommand: String, uiTree: String, previousActions: String): String {
+        val actionHistory = if (previousActions.isNotEmpty()) {
+            "\n\nPrevious actions taken:\n$previousActions"
+        } else {
+            ""
+        }
+
         val systemPrompt = """
 You are an Android accessibility assistant. You receive UI trees from Android apps and user commands.
 Your job is to determine what action to take to fulfill the user's command.
@@ -81,7 +88,7 @@ Available actions:
 - home: Press home button
 - launch <app>: Launch an app (use package names like com.android.settings)
 
-Respond with ONLY the action command to execute, nothing else. If the task is complete or impossible, respond with "done".
+Respond with ONLY the action command to execute, nothing else. If the task is complete or impossible, respond with "done".$actionHistory
 
 UI Tree (JSON):
 $uiTree
