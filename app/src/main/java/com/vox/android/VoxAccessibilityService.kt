@@ -103,6 +103,14 @@ class VoxAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
                 notifyUiChange()
+                if (this::stateProvider.isInitialized) {
+                    try {
+                        val tree = stateProvider.getUITree()
+                        _uiChangeEvents.tryEmit(tree)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error emitting UI change event", e)
+                    }
+                }
             }
         }
 

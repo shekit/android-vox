@@ -78,7 +78,9 @@ class CommandOrchestrator(
                 Log.d(TAG, "Step $stepNumber - UI hash: $currentUiHash, changed: $uiChanged")
 
                 // Decide action
-                val decision = decisionService.decideAction(command.text, state, records, uiChanged)
+                val decision = withContext(Dispatchers.IO) {
+                    decisionService.decideAction(command.text, state, records, uiChanged)
+                }
 
                 when (decision) {
                     is ActionDecisionResult.Success -> {
@@ -99,7 +101,9 @@ class CommandOrchestrator(
 
                         delay(config.preActionDelayMs)
 
-                        val result = actionExecutor.execute(action)
+                        val result = withContext(Dispatchers.Main) {
+                            actionExecutor.execute(action)
+                        }
                         Log.d(TAG, "Step $stepNumber - Result: ${result.toLogString()}")
 
                         // Wait for UI change
@@ -159,7 +163,7 @@ class CommandOrchestrator(
         } finally {
             _isActive.set(false)
         }
-    }.flowOn(Dispatchers.Main)
+    }.flowOn(Dispatchers.Default)
 
     /**
      * Cancel the current execution.

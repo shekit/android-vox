@@ -195,7 +195,7 @@ class RemoteControlService : Service() {
      * Update notification with current client count.
      */
     fun updateNotification() {
-        val port = server?.let { 8080 } ?: 8080  // TODO: get from config
+        val port = server?.port ?: 8080
         val notification = createNotification(port, server?.clientCount ?: 0)
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, notification)

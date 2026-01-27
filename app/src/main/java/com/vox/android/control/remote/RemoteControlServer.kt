@@ -43,6 +43,7 @@ class RemoteControlServer(
 
     val isRunning: Boolean get() = server != null
     val clientCount: Int get() = clients.size
+    val port: Int get() = config.port
 
     /**
      * Start the server.
@@ -195,7 +196,8 @@ class RemoteControlServer(
 
             is RemoteCommand.ExecuteAction -> {
                 serverScope.launch {
-                    val action = Action.fromCommandString(command.action)
+                    val actionCommand = buildActionCommand(command.action, command.parameters)
+                    val action = Action.fromCommandString(actionCommand)
                     if (action == null) {
                         sendResponse(session, RemoteResponse.Error(command.id, "Invalid action: ${command.action}"))
                         return@launch
@@ -213,6 +215,10 @@ class RemoteControlServer(
 
             is RemoteCommand.ExecuteTask -> {
                 serverScope.launch {
+                    if (orchestrator?.isActive == true) {
+                        sendResponse(session, RemoteResponse.Error(command.id, "Another task is already executing"))
+                        return@launch
+                    }
                     executeTask(command.id, command.task, session)
                 }
             }
@@ -299,6 +305,31 @@ class RemoteControlServer(
             session.send(response.toJson())
         } catch (e: Exception) {
             Log.e(TAG, "Error sending response", e)
+        }
+    }
+
+    private fun buildActionCommand(action: String, parameters: Map<String, String>): String {
+        if (parameters.isEmpty()) return action
+
+        return when (action.lowercase()) {
+            "launch" -> parameters["app"]?.let { "launch $it" } ?: action
+            "tap" -> parameters["text"]?.let { "tap $it" } ?: action
+            "type" -> {
+                val text = parameters["text"]
+                val field = parameters["field"]
+                if (!text.isNullOrEmpty() && !field.isNullOrEmpty()) {
+                    "type $text into $field"
+                } else {
+                    action
+                }
+            }
+            "scroll_down" -> "scroll down"
+            "scroll_up" -> "scroll up"
+            "back" -> "back"
+            "home" -> "home"
+            "enter" -> "enter"
+            "done" -> "done"
+            else -> action
         }
     }
 

@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.Display
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.annotation.RequiresApi
+import com.vox.android.VoxAccessibilityService
 import com.vox.android.core.interfaces.DeviceStateProvider
 import com.vox.android.core.models.AppInfo
 import com.vox.android.core.models.DeviceState
@@ -170,10 +171,14 @@ class AccessibilityStateProvider(
         )
     }
 
-    override fun uiChangeEvents(): Flow<UITree> = callbackFlow {
-        // This will be connected to the accessibility service's event stream
-        // For now, we'll rely on the VoxAccessibilityService to push updates
-        awaitClose { }
+    override fun uiChangeEvents(): Flow<UITree> {
+        return if (service is VoxAccessibilityService) {
+            VoxAccessibilityService.uiChangeEvents
+        } else {
+            callbackFlow {
+                awaitClose { }
+            }
+        }
     }
 
     override fun isPackageInstalled(packageName: String): Boolean {

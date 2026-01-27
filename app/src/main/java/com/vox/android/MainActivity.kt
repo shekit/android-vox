@@ -111,10 +111,16 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        if (orchestrator?.isActive == true) {
+            textResponse.text = "A command is already running. Please wait."
+            return
+        }
+
         // Clear input
         editCommand.text.clear()
         statusLog = StringBuilder("Starting: $command\n")
         textResponse.text = statusLog.toString()
+        buttonAskClaude.isEnabled = false
 
         // Create orchestrator with the new architecture
         val stateProvider = service.getStateProvider()
@@ -138,6 +144,7 @@ class MainActivity : AppCompatActivity() {
         when (state) {
             is ExecutionState.Idle -> {
                 // Ready
+                buttonAskClaude.isEnabled = true
             }
             is ExecutionState.Starting -> {
                 statusLog = StringBuilder("Starting: ${state.command.text}\n")
@@ -157,6 +164,7 @@ class MainActivity : AppCompatActivity() {
             is ExecutionState.Completed -> {
                 statusLog.append("\nTask complete!")
                 textResponse.text = statusLog.toString()
+                buttonAskClaude.isEnabled = true
                 // Return to app after completion
                 android.os.Handler(mainLooper).postDelayed({
                     bringToFront()
@@ -165,10 +173,12 @@ class MainActivity : AppCompatActivity() {
             is ExecutionState.Failed -> {
                 statusLog.append("\nERROR: ${state.error}")
                 textResponse.text = statusLog.toString()
+                buttonAskClaude.isEnabled = true
             }
             is ExecutionState.Cancelled -> {
                 statusLog.append("\nCancelled")
                 textResponse.text = statusLog.toString()
+                buttonAskClaude.isEnabled = true
             }
         }
     }
