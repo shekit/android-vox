@@ -24,6 +24,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonAskClaude: Button
     private lateinit var textResponse: TextView
 
+    // Flag to cancel command loop when activity is destroyed
+    @Volatile
+    private var isLoopActive = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "MainActivity onCreate")
@@ -86,6 +90,7 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Found ${installedApps.size} installed apps")
 
             // P7.2: Start the command loop
+            isLoopActive = true
             runCommandLoop(command, apiKey, service, installedApps = installedApps)
         }
     }
@@ -93,6 +98,12 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "MainActivity onResume")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "MainActivity onDestroy - cancelling command loop")
+        isLoopActive = false
     }
 
     // P6.2: API key storage functions
@@ -129,9 +140,16 @@ class MainActivity : AppCompatActivity() {
     ) {
         Log.d(TAG, "Command loop step $stepNumber")
 
+        // Check if loop was cancelled (e.g., activity destroyed)
+        if (!isLoopActive) {
+            Log.d(TAG, "Command loop cancelled - activity no longer active")
+            return
+        }
+
         // Safety: limit maximum steps to prevent runaway loops
         val maxSteps = 20
         if (stepNumber > maxSteps) {
+            isLoopActive = false
             textResponse.text = statusLog + "\nStopped: Reached maximum of $maxSteps steps"
             Log.w(TAG, "Command loop stopped: exceeded max steps")
             return
@@ -149,6 +167,7 @@ class MainActivity : AppCompatActivity() {
         val uiTree = VoxAccessibilityService.getLatestTree()
         if (uiTree.isEmpty()) {
             // P7.4: Error handling
+            isLoopActive = false
             val errorMsg = status + "ERROR: No UI tree available"
             textResponse.text = errorMsg
             Log.e(TAG, "Command loop failed: no UI tree")
@@ -188,6 +207,7 @@ class MainActivity : AppCompatActivity() {
 
                         // P7.2: Check if done
                         if (action.equals("done", ignoreCase = true)) {
+                            isLoopActive = false
                             textResponse.text = updatedStatus + "\nTask complete!"
                             Log.d(TAG, "Command loop finished - task complete")
 
@@ -202,6 +222,12 @@ class MainActivity : AppCompatActivity() {
 
                         // P7.1: Execute the action
                         android.os.Handler(mainLooper).postDelayed({
+                            // Check if loop was cancelled before executing
+                            if (!isLoopActive) {
+                                Log.d(TAG, "Command loop cancelled before action execution")
+                                return@postDelayed
+                            }
+
                             // P7.4: Error handling for action execution
                             try {
                                 val result = executeAction(action, service)
@@ -219,6 +245,12 @@ class MainActivity : AppCompatActivity() {
                                 // Wait for UI change event (or timeout), then continue loop
                                 VoxAccessibilityService.waitForUiChange(3000) {
                                     runOnUiThread {
+                                        // Check if loop was cancelled before continuing
+                                        if (!isLoopActive) {
+                                            Log.d(TAG, "Command loop cancelled before next iteration")
+                                            return@runOnUiThread
+                                        }
+
                                         // Add current action to history with execution result
                                         val resultLabel = if (actionFailed) "FAILED: $result" else "SUCCESS"
                                         val actionWithResult = "Step $stepNumber: $action → $resultLabel"
@@ -234,6 +266,7 @@ class MainActivity : AppCompatActivity() {
 
                             } catch (e: Exception) {
                                 // P7.4: Error handling
+                                isLoopActive = false
                                 val errorMsg = updatedStatus + "ERROR: ${e.message}"
                                 textResponse.text = errorMsg
                                 Log.e(TAG, "Action execution exception", e)
@@ -242,12 +275,14 @@ class MainActivity : AppCompatActivity() {
 
                     } else {
                         // P7.4: Error handling for parse failure
+                        isLoopActive = false
                         val errorMsg = status + "ERROR: Failed to parse Claude response - ${parsed.rawText}"
                         textResponse.text = errorMsg
                         Log.e(TAG, "Parse error: ${parsed.rawText}")
                     }
                 } else {
                     // P7.4: Error handling for API failure
+                    isLoopActive = false
                     val errorMsg = status + "ERROR: API request failed - $error"
                     textResponse.text = errorMsg
                     Log.e(TAG, "API error: $error")
