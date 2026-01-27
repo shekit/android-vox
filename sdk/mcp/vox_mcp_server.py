@@ -58,6 +58,12 @@ Typical workflow:
 Available actions for phone_execute:
 - tap <text>: Tap on element containing text (e.g., "tap Settings")
 - tap_id <id>: Tap on element with resource ID (e.g., "tap_id com.android.settings:id/search_action_bar")
+- long_press <text>: Long press on element containing text (e.g., "long_press Photo.jpg")
+- tap_at <x> <y>: Tap at specific screen coordinates (e.g., "tap_at 540 1200")
+- swipe_left: Swipe left (e.g., for carousel navigation)
+- swipe_right: Swipe right
+- swipe_up: Swipe up (e.g., to dismiss)
+- swipe_down: Swipe down (e.g., to pull down notifications)
 - type <text>: Type text into the focused field (e.g., "type hello world")
 - type <text> into <field>: Type into specific field (e.g., "type john into Username")
 - launch <app>: Launch app by name or package (e.g., "launch Camera" or "launch com.google.android.GoogleCamera")
@@ -177,6 +183,12 @@ async def phone_execute(action: str) -> str:
         action: The action to execute. Supported actions:
             - "tap <text>": Tap on element containing text (e.g., "tap Settings")
             - "tap_id <id>": Tap on element with resource ID
+            - "long_press <text>": Long press on element (e.g., "long_press Photo.jpg")
+            - "tap_at <x> <y>": Tap at screen coordinates (e.g., "tap_at 540 1200")
+            - "swipe_left": Swipe left (carousel, dismiss)
+            - "swipe_right": Swipe right
+            - "swipe_up": Swipe up (dismiss, pull up)
+            - "swipe_down": Swipe down (notifications)
             - "type <text>": Type text into focused field
             - "type <text> into <field>": Type into specific field
             - "launch <app>": Launch app by name or package

@@ -2,6 +2,7 @@ package com.vox.android.core.interfaces
 
 import com.vox.android.core.models.Action
 import com.vox.android.core.models.ActionResult
+import com.vox.android.core.models.SwipeDirection
 
 /**
  * Interface for executing actions on the device.
@@ -22,6 +23,21 @@ interface ActionExecutor {
      * Tap on an element by text.
      */
     fun tapByText(text: String): Boolean
+
+    /**
+     * Long press on an element by text.
+     */
+    fun longPressByText(text: String): Boolean
+
+    /**
+     * Tap at specific screen coordinates.
+     */
+    fun tapAtCoordinates(x: Int, y: Int): Boolean
+
+    /**
+     * Swipe in a direction.
+     */
+    fun swipe(direction: SwipeDirection): Boolean
 
     /**
      * Type text into a field.

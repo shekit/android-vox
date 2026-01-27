@@ -314,6 +314,20 @@ class RemoteControlServer(
         return when (action.lowercase()) {
             "launch" -> parameters["app"]?.let { "launch $it" } ?: action
             "tap" -> parameters["text"]?.let { "tap $it" } ?: action
+            "long_press" -> parameters["text"]?.let { "long_press $it" } ?: action
+            "tap_at" -> {
+                val x = parameters["x"]
+                val y = parameters["y"]
+                if (!x.isNullOrEmpty() && !y.isNullOrEmpty()) {
+                    "tap_at $x $y"
+                } else {
+                    action
+                }
+            }
+            "swipe_left" -> "swipe left"
+            "swipe_right" -> "swipe right"
+            "swipe_up" -> "swipe up"
+            "swipe_down" -> "swipe down"
             "type" -> {
                 val text = parameters["text"]
                 val field = parameters["field"]

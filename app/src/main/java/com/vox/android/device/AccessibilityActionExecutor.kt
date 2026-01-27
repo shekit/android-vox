@@ -1,7 +1,9 @@
 package com.vox.android.device
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.GestureDescription
 import android.content.Intent
+import android.graphics.Path
 import android.os.Bundle
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
@@ -10,6 +12,9 @@ import com.vox.android.core.models.Action
 import com.vox.android.core.models.ActionResult
 import com.vox.android.core.models.FailureReason
 import com.vox.android.core.models.ScrollDirection
+import com.vox.android.core.models.SwipeDirection
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Implementation of ActionExecutor using Android Accessibility Service.
@@ -42,6 +47,27 @@ class AccessibilityActionExecutor(
                     ActionResult.success(action, "Tapped '${action.text}'")
                 } else {
                     ActionResult.failure(action, "Could not find/tap '${action.text}'", FailureReason.ELEMENT_NOT_FOUND)
+                }
+            }
+            is Action.LongPress -> {
+                if (longPressByText(action.text)) {
+                    ActionResult.success(action, "Long pressed '${action.text}'")
+                } else {
+                    ActionResult.failure(action, "Could not find/long-press '${action.text}'", FailureReason.ELEMENT_NOT_FOUND)
+                }
+            }
+            is Action.TapAt -> {
+                if (tapAtCoordinates(action.x, action.y)) {
+                    ActionResult.success(action, "Tapped at (${action.x}, ${action.y})")
+                } else {
+                    ActionResult.failure(action, "Could not tap at (${action.x}, ${action.y})", FailureReason.ACTION_FAILED)
+                }
+            }
+            is Action.Swipe -> {
+                if (swipe(action.direction)) {
+                    ActionResult.success(action, "Swiped ${action.direction.name.lowercase()}")
+                } else {
+                    ActionResult.failure(action, "Could not swipe ${action.direction.name.lowercase()}", FailureReason.ACTION_FAILED)
                 }
             }
             is Action.Type -> {
@@ -222,6 +248,101 @@ class AccessibilityActionExecutor(
         }
     }
 
+    override fun longPressByText(text: String): Boolean {
+        val rootNode = service.rootInActiveWindow ?: return false
+        val node = findNodeByTextRecursive(rootNode, text)
+        val success = if (node != null) {
+            longPressNode(node).also { node.recycle() }
+        } else {
+            Log.w(TAG, "Cannot long press: node with text '$text' not found")
+            false
+        }
+        if (node !== rootNode) rootNode.recycle()
+        return success
+    }
+
+    override fun tapAtCoordinates(x: Int, y: Int): Boolean {
+        return try {
+            val path = Path().apply {
+                moveTo(x.toFloat(), y.toFloat())
+            }
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 100))
+                .build()
+
+            val latch = CountDownLatch(1)
+            var result = false
+            service.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    result = true
+                    Log.d(TAG, "Tap at ($x, $y) completed")
+                    latch.countDown()
+                }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    Log.w(TAG, "Tap at ($x, $y) cancelled")
+                    latch.countDown()
+                }
+            }, null)
+
+            // Wait for the callback with timeout
+            latch.await(2, TimeUnit.SECONDS)
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error tapping at coordinates ($x, $y)", e)
+            false
+        }
+    }
+
+    override fun swipe(direction: SwipeDirection): Boolean {
+        return try {
+            // Get screen dimensions
+            val displayMetrics = service.resources.displayMetrics
+            val screenWidth = displayMetrics.widthPixels
+            val screenHeight = displayMetrics.heightPixels
+
+            val centerX = screenWidth / 2f
+            val centerY = screenHeight / 2f
+            val swipeDistance = minOf(screenWidth, screenHeight) / 3f
+
+            val (startX, startY, endX, endY) = when (direction) {
+                SwipeDirection.LEFT -> listOf(centerX + swipeDistance, centerY, centerX - swipeDistance, centerY)
+                SwipeDirection.RIGHT -> listOf(centerX - swipeDistance, centerY, centerX + swipeDistance, centerY)
+                SwipeDirection.UP -> listOf(centerX, centerY + swipeDistance, centerX, centerY - swipeDistance)
+                SwipeDirection.DOWN -> listOf(centerX, centerY - swipeDistance, centerX, centerY + swipeDistance)
+            }
+
+            val path = Path().apply {
+                moveTo(startX, startY)
+                lineTo(endX, endY)
+            }
+
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 300))
+                .build()
+
+            val latch = CountDownLatch(1)
+            var result = false
+            service.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    result = true
+                    Log.d(TAG, "Swipe ${direction.name.lowercase()} completed")
+                    latch.countDown()
+                }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    Log.w(TAG, "Swipe ${direction.name.lowercase()} cancelled")
+                    latch.countDown()
+                }
+            }, null)
+
+            // Wait for the callback with timeout
+            latch.await(2, TimeUnit.SECONDS)
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error swiping ${direction.name.lowercase()}", e)
+            false
+        }
+    }
+
     // Helper methods
 
     private fun findNodeByTextRecursive(node: AccessibilityNodeInfo, text: String): AccessibilityNodeInfo? {
@@ -262,6 +383,70 @@ class AccessibilityActionExecutor(
                 parent = next
             }
             Log.w(TAG, "Node and parents not clickable: ${node.className}")
+            false
+        }
+    }
+
+    private fun longPressNode(node: AccessibilityNodeInfo): Boolean {
+        return if (node.isLongClickable) {
+            node.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK).also {
+                Log.d(TAG, "Long pressed node: ${node.className}, text=${node.text}")
+            }
+        } else {
+            // Try long-clickable parent
+            var parent = node.parent
+            while (parent != null) {
+                if (parent.isLongClickable) {
+                    val success = parent.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)
+                    Log.d(TAG, "Long pressed parent: ${parent.className}")
+                    parent.recycle()
+                    return success
+                }
+                val next = parent.parent
+                parent.recycle()
+                parent = next
+            }
+            // Fallback: try using gesture-based long press at node center
+            Log.d(TAG, "Node not long-clickable, trying gesture-based long press")
+            longPressNodeViaGesture(node)
+        }
+    }
+
+    private fun longPressNodeViaGesture(node: AccessibilityNodeInfo): Boolean {
+        return try {
+            val bounds = android.graphics.Rect()
+            node.getBoundsInScreen(bounds)
+            val x = bounds.centerX().toFloat()
+            val y = bounds.centerY().toFloat()
+
+            val path = Path().apply {
+                moveTo(x, y)
+            }
+
+            // Long press = hold for 500ms+
+            val gesture = GestureDescription.Builder()
+                .addStroke(GestureDescription.StrokeDescription(path, 0, 600))
+                .build()
+
+            val latch = CountDownLatch(1)
+            var result = false
+            service.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) {
+                    result = true
+                    Log.d(TAG, "Long press via gesture at ($x, $y) completed")
+                    latch.countDown()
+                }
+                override fun onCancelled(gestureDescription: GestureDescription?) {
+                    Log.w(TAG, "Long press via gesture at ($x, $y) cancelled")
+                    latch.countDown()
+                }
+            }, null)
+
+            // Wait for the callback with timeout
+            latch.await(2, TimeUnit.SECONDS)
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error with gesture-based long press", e)
             false
         }
     }
