@@ -445,8 +445,8 @@
           "id": "P9.8",
           "description": "Add Claude Code MCP configuration",
           "test": "Instructions to add server to claude_desktop_config.json or VS Code settings",
-          "passes": false,
-          "notes": "README with setup instructions"
+          "passes": true,
+          "notes": "sdk/mcp/README.md with full setup instructions for VS Code and Claude Desktop"
         },
         {
           "id": "P9.9",
