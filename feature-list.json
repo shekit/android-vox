@@ -431,8 +431,8 @@
           "id": "P9.6",
           "description": "Implement phone_get_state tool",
           "test": "Tool returns combined screenshot + UI tree + foreground app",
-          "passes": false,
-          "notes": "Convenience tool for full state in one call"
+          "passes": true,
+          "notes": "Convenience tool combining all state in one call, optional screenshot"
         },
         {
           "id": "P9.7",
