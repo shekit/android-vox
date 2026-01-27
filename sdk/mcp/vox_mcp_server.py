@@ -22,7 +22,7 @@ import base64
 import json
 import os
 import sys
-from typing import Optional
+from typing import Optional, List, Union
 
 # Add parent directory to path to import vox_client
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python'))
@@ -49,11 +49,23 @@ mcp = FastMCP(
     instructions="""
 This MCP server provides tools to control an Android phone via the Vox accessibility service.
 
-Typical workflow:
+CRITICAL WORKFLOW - Follow this for every task:
 1. Connect to the phone using phone_connect()
-2. Get the current screen state with phone_get_state() or phone_get_screenshot()
-3. Analyze the UI and execute actions with phone_execute()
-4. Repeat steps 2-3 until the task is complete
+2. ALWAYS call phone_get_state() before taking any action
+   - This returns BOTH a screenshot (visual) AND the ui_tree (structured data)
+   - The ui_tree contains exact text, content descriptions, and resource IDs for all elements
+3. Analyze the ui_tree to find your target element - use its EXACT text or resource ID
+4. Execute the appropriate action using phone_execute() with identifiers from the ui_tree
+5. Call phone_get_state() again to verify the result and see the new screen
+6. Repeat steps 3-5 until the task is complete
+
+KEY PRINCIPLE: The ui_tree is your source of truth. Every action that targets an element
+(tap, type, long_press) MUST use text or IDs found in the ui_tree. Never guess element names
+based on what you think a button might say - always verify in the tree first.
+
+Example:
+- DON'T guess: "tap Send" (might be wrong)
+- DO: Look at ui_tree, find the actual text is "SMS", use "tap SMS"
 
 Available actions for phone_execute:
 - tap <text>: Tap on element containing text (e.g., "tap Settings")
@@ -214,22 +226,22 @@ async def phone_execute(action: str) -> str:
 
 
 @mcp.tool()
-async def phone_get_state(include_screenshot: bool = True) -> str:
+async def phone_get_state(include_screenshot: bool = True) -> List[Union[str, Image]]:
     """
     Get the full state of the phone including UI tree, foreground app, and optionally a screenshot.
 
-    This is a convenience tool that combines multiple pieces of information.
-    For tasks requiring visual analysis, use include_screenshot=True.
+    This is the PRIMARY tool for understanding the current screen state. Always call this
+    before executing actions to know what elements are available.
 
     Args:
         include_screenshot: Whether to include a screenshot (default: True)
 
     Returns:
-        JSON string containing:
-        - foreground_package: The currently active app's package name
-        - ui_tree: The UI tree structure
-        - screenshot: Base64 encoded screenshot (if requested)
-        - timestamp: Server timestamp
+        A list containing:
+        - JSON string with: foreground_package, ui_tree (with all element text/IDs), timestamp
+        - Screenshot image (if requested) that you can visually analyze
+
+    The ui_tree contains exact text and resource IDs - use these for tap/type actions.
     """
     try:
         client = await get_client()
@@ -241,10 +253,14 @@ async def phone_get_state(include_screenshot: bool = True) -> str:
             "timestamp": state.timestamp
         }
 
-        if include_screenshot and state.screenshot:
-            result["screenshot"] = state.screenshot
+        # Return both the JSON data and the screenshot as separate content items
+        response: List[Union[str, Image]] = [json.dumps(result, indent=2)]
 
-        return json.dumps(result, indent=2)
+        if include_screenshot and state.screenshot:
+            image_data = base64.b64decode(state.screenshot)
+            response.append(Image(data=image_data, format="png"))
+
+        return response
     except Exception as e:
         raise RuntimeError(f"Failed to get device state: {str(e)}")
 
