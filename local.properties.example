@@ -4,5 +4,6 @@
 # Android SDK location (auto-detected by Android Studio, but can be set manually)
 sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
 
-# Claude API key for development
-CLAUDE_API_KEY=sk-ant-xxxxx
+# OpenRouter API key (get one at https://openrouter.ai/keys)
+# This key works with Claude, GPT-4, Gemini, and other models
+OPENROUTER_API_KEY=sk-or-v1-xxxxx

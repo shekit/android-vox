@@ -5,8 +5,10 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
@@ -16,10 +18,12 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "VoxMain"
         private const val PREFS_NAME = "VoxPrefs"
         private const val KEY_API_KEY = "claude_api_key"
+        private const val KEY_SELECTED_MODEL = "selected_model"
     }
 
     private lateinit var editApiKey: EditText
     private lateinit var buttonSaveApiKey: Button
+    private lateinit var spinnerModel: Spinner
     private lateinit var editCommand: EditText
     private lateinit var buttonAskClaude: Button
     private lateinit var textResponse: TextView
@@ -35,9 +39,13 @@ class MainActivity : AppCompatActivity() {
 
         editApiKey = findViewById(R.id.editApiKey)
         buttonSaveApiKey = findViewById(R.id.buttonSaveApiKey)
+        spinnerModel = findViewById(R.id.spinnerModel)
         editCommand = findViewById(R.id.editCommand)
         buttonAskClaude = findViewById(R.id.buttonAskClaude)
         textResponse = findViewById(R.id.textResponse)
+
+        // Set up model selector spinner
+        setupModelSpinner()
 
         // P6.2: Load saved API key
         loadApiKey()
@@ -127,6 +135,50 @@ class MainActivity : AppCompatActivity() {
         return prefs.getString(KEY_API_KEY, null)
     }
 
+    // Model selection functions
+    private fun setupModelSpinner() {
+        val models = ClaudeApiClient.AVAILABLE_MODELS
+        val displayNames = models.map { ClaudeApiClient.MODEL_DISPLAY_NAMES[it] ?: it }
+
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, displayNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerModel.adapter = adapter
+
+        // Restore saved selection
+        val savedModel = getSavedModel()
+        val savedIndex = models.indexOf(savedModel)
+        if (savedIndex >= 0) {
+            spinnerModel.setSelection(savedIndex)
+        }
+
+        // Save selection when changed
+        spinnerModel.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                saveSelectedModel(models[position])
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+    }
+
+    private fun getSelectedModel(): String {
+        val position = spinnerModel.selectedItemPosition
+        return if (position >= 0 && position < ClaudeApiClient.AVAILABLE_MODELS.size) {
+            ClaudeApiClient.AVAILABLE_MODELS[position]
+        } else {
+            ClaudeApiClient.DEFAULT_MODEL
+        }
+    }
+
+    private fun saveSelectedModel(model: String) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_SELECTED_MODEL, model).apply()
+    }
+
+    private fun getSavedModel(): String {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_SELECTED_MODEL, ClaudeApiClient.DEFAULT_MODEL) ?: ClaudeApiClient.DEFAULT_MODEL
+    }
+
     // P7.2, P7.3, P7.4: Run autonomous command loop
     private fun runCommandLoop(
         userCommand: String,
@@ -188,7 +240,8 @@ class MainActivity : AppCompatActivity() {
 
         // Send request to Claude with UI change feedback
         val historyWithFeedback = actionHistory + uiChangeInfo
-        val client = ClaudeApiClient(apiKey)
+        val selectedModel = getSelectedModel()
+        val client = ClaudeApiClient(apiKey, selectedModel)
 
         // Capture screenshot on step 2+ (after we've navigated to target app)
         val sendApiRequest: (String?) -> Unit = { screenshotBase64 ->

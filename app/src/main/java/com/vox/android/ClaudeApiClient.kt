@@ -8,14 +8,34 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
-class ClaudeApiClient(private val apiKey: String) {
+class ClaudeApiClient(
+    private val apiKey: String,
+    private val model: String = DEFAULT_MODEL
+) {
 
     companion object {
         private const val TAG = "ClaudeApiClient"
-        private const val API_URL = "https://api.anthropic.com/v1/messages"
-        private const val MODEL = "claude-opus-4-5-20251101"
-        private const val API_VERSION = "2023-06-01"
-        private const val BETA_HEADER = "structured-outputs-2025-11-13"
+        private const val API_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+        // Default model - can be changed via constructor
+        const val DEFAULT_MODEL = "anthropic/claude-opus-4.5"
+
+        // Available models for easy switching
+        // To add/remove models: just edit this list
+        val AVAILABLE_MODELS = listOf(
+            "anthropic/claude-opus-4.5",
+            "anthropic/claude-sonnet-4.5",
+            "openai/gpt-4o",
+            "google/gemini-2.5-flash"
+        )
+
+        // Display names for UI
+        val MODEL_DISPLAY_NAMES = mapOf(
+            "anthropic/claude-opus-4.5" to "Claude Opus 4.5",
+            "anthropic/claude-sonnet-4.5" to "Claude Sonnet 4.5",
+            "openai/gpt-4o" to "GPT-4o",
+            "google/gemini-2.5-flash" to "Gemini 2.5 Flash"
+        )
     }
 
     private val client = OkHttpClient()
@@ -36,12 +56,19 @@ class ClaudeApiClient(private val apiKey: String) {
         Log.d(TAG, "Screenshot: ${if (screenshotBase64 != null) "${screenshotBase64.length} chars" else "none"}")
 
         val requestBody = buildRequestBody(userCommand, uiTree, previousActions, installedApps, screenshotBase64)
-        val request = Request.Builder()
+        val requestBuilder = Request.Builder()
             .url(API_URL)
-            .addHeader("x-api-key", apiKey)
-            .addHeader("anthropic-version", API_VERSION)
-            .addHeader("anthropic-beta", BETA_HEADER)
-            .addHeader("content-type", "application/json")
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("HTTP-Referer", "https://github.com/anthropics/android-vox")
+            .addHeader("X-Title", "android-vox")
+
+        // Add Anthropic beta header for Claude models (required for structured outputs)
+        if (model.startsWith("anthropic/")) {
+            requestBuilder.addHeader("x-anthropic-beta", "structured-outputs-2025-11-13")
+        }
+
+        val request = requestBuilder
             .post(requestBody.toRequestBody(mediaType))
             .build()
 
@@ -196,17 +223,22 @@ $uiTree
                     put("type", "object")
                     put("properties", JSONObject().apply {
                         put("app", JSONObject().apply {
-                            put("type", "string")
+                            put("type", JSONArray().apply { put("string"); put("null") })
                             put("description", "Package name (bundle ID) from the INSTALLED APPS list. Must be exact match like com.google.android.GoogleCamera")
                         })
                         put("text", JSONObject().apply {
-                            put("type", "string")
+                            put("type", JSONArray().apply { put("string"); put("null") })
                             put("description", "Text to tap on or type")
                         })
                         put("field", JSONObject().apply {
-                            put("type", "string")
+                            put("type", JSONArray().apply { put("string"); put("null") })
                             put("description", "Field to type into (for type action)")
                         })
+                    })
+                    put("required", JSONArray().apply {
+                        put("app")
+                        put("text")
+                        put("field")
                     })
                     put("additionalProperties", false)
                     put("description", "Parameters for the action")
@@ -214,39 +246,48 @@ $uiTree
             })
             put("required", JSONArray().apply {
                 put("action")
+                put("parameters")
             })
             put("additionalProperties", false)
         }
 
         val jsonBody = JSONObject().apply {
-            put("model", MODEL)
+            put("model", model)
             put("max_tokens", 1024)
             put("messages", JSONArray().apply {
+                // System message
+                put(JSONObject().apply {
+                    put("role", "system")
+                    put("content", systemPrompt)
+                })
+                // User message with optional image
                 put(JSONObject().apply {
                     put("role", "user")
                     put("content", JSONArray().apply {
-                        // Add screenshot image if provided
+                        // Add screenshot image if provided (OpenAI format)
                         if (screenshotBase64 != null) {
                             put(JSONObject().apply {
-                                put("type", "image")
-                                put("source", JSONObject().apply {
-                                    put("type", "base64")
-                                    put("media_type", "image/jpeg")
-                                    put("data", screenshotBase64)
+                                put("type", "image_url")
+                                put("image_url", JSONObject().apply {
+                                    put("url", "data:image/jpeg;base64,$screenshotBase64")
                                 })
                             })
                         }
                         put(JSONObject().apply {
                             put("type", "text")
-                            put("text", "System: $systemPrompt\n\nUser command: $userCommand")
+                            put("text", userCommand)
                         })
                     })
                 })
             })
-            // Add output_format for structured output
-            put("output_format", JSONObject().apply {
+            // Add response_format for structured output (OpenRouter format)
+            put("response_format", JSONObject().apply {
                 put("type", "json_schema")
-                put("schema", responseSchema)
+                put("json_schema", JSONObject().apply {
+                    put("name", "action_response")
+                    put("strict", true)
+                    put("schema", responseSchema)
+                })
             })
         }
 

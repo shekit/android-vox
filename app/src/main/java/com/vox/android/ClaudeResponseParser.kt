@@ -17,12 +17,13 @@ object ClaudeResponseParser {
         return try {
             val json = JSONObject(responseJson)
 
-            // Extract the text content from Claude's response
-            val content = json.getJSONArray("content")
-            val textBlock = content.getJSONObject(0)
-            val text = textBlock.getString("text").trim()
+            // Extract the text content from OpenRouter/OpenAI response format
+            // Format: { "choices": [{ "message": { "content": "..." } }] }
+            val choices = json.getJSONArray("choices")
+            val message = choices.getJSONObject(0).getJSONObject("message")
+            val text = message.getString("content").trim()
 
-            Log.d(TAG, "Raw Claude response: $text")
+            Log.d(TAG, "Raw LLM response: $text")
 
             // Parse the structured JSON action
             val actionJson = JSONObject(text)
