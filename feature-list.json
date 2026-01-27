@@ -385,6 +385,87 @@
         ],
         "data_flow": "CommandSource -> CommandOrchestrator -> (DeviceStateProvider + ActionDecisionService + ActionExecutor) -> ActionResult -> CommandSource"
       }
+    },
+    {
+      "id": "P9",
+      "name": "MCP Server for Claude Code",
+      "testable_outcome": "Tell Claude Code 'take a photo on my phone' and it autonomously controls the phone",
+      "goal": "Expose phone as MCP tools so Claude Code can control it directly without separate API calls",
+      "features": [
+        {
+          "id": "P9.1",
+          "description": "Create MCP server skeleton",
+          "test": "Python MCP server starts and registers with Claude Code",
+          "passes": false,
+          "notes": "sdk/mcp/vox_mcp_server.py using mcp Python package"
+        },
+        {
+          "id": "P9.2",
+          "description": "Implement phone_connect tool",
+          "test": "Tool connects to phone WebSocket, returns connection status",
+          "passes": false,
+          "notes": "Reuses vox_client.py, manages persistent connection"
+        },
+        {
+          "id": "P9.3",
+          "description": "Implement phone_get_screenshot tool",
+          "test": "Tool returns base64 screenshot that Claude can see",
+          "passes": false,
+          "notes": "Returns image data for Claude's vision capability"
+        },
+        {
+          "id": "P9.4",
+          "description": "Implement phone_get_ui_tree tool",
+          "test": "Tool returns UI tree JSON with tappable elements",
+          "passes": false,
+          "notes": "Simplified tree showing text, clickable, bounds"
+        },
+        {
+          "id": "P9.5",
+          "description": "Implement phone_execute tool",
+          "test": "Tool executes actions: tap, type, scroll, launch, back, home, enter",
+          "passes": false,
+          "notes": "Single tool with action parameter, returns success/failure"
+        },
+        {
+          "id": "P9.6",
+          "description": "Implement phone_get_state tool",
+          "test": "Tool returns combined screenshot + UI tree + foreground app",
+          "passes": false,
+          "notes": "Convenience tool for full state in one call"
+        },
+        {
+          "id": "P9.7",
+          "description": "Add configuration via environment variables",
+          "test": "VOX_PHONE_HOST, VOX_PHONE_PORT, VOX_AUTH_TOKEN configure connection",
+          "passes": false,
+          "notes": "Sensible defaults, env vars for customization"
+        },
+        {
+          "id": "P9.8",
+          "description": "Add Claude Code MCP configuration",
+          "test": "Instructions to add server to claude_desktop_config.json or VS Code settings",
+          "passes": false,
+          "notes": "README with setup instructions"
+        },
+        {
+          "id": "P9.9",
+          "description": "End-to-end test with Claude Code",
+          "test": "Say 'open camera and take a photo' in Claude Code, phone executes",
+          "passes": false,
+          "notes": "Prove the full loop works"
+        }
+      ],
+      "architecture": {
+        "flow": "User -> Claude Code -> MCP Server -> WebSocket -> Phone -> Action",
+        "tools": [
+          "phone_connect(host, port, auth_token) -> connection status",
+          "phone_get_screenshot() -> base64 image",
+          "phone_get_ui_tree() -> JSON tree",
+          "phone_execute(action, params) -> success/failure",
+          "phone_get_state(include_screenshot) -> full state"
+        ]
+      }
     }
   ]
 }
