@@ -3,9 +3,41 @@
 ## Current Status
 
 **Phase**: Phase 7 Complete + Enhancements
-**State**: Autonomous command loop with action history - Claude has memory of previous steps for better multi-step navigation
+**State**: Multi-window keyboard access, app name lookup, UI feedback mechanism
 
 ## Session History
+
+### Session 10 — 2026-01-26
+**Focus**: Fix primitives, add app lookup, add UI feedback for task completion
+
+**Completed**:
+- Fixed pressEnter() by adding `flagRetrieveInteractiveWindows` to accessibility config
+  - Keyboard is a separate window; without this flag, service only saw 0 windows
+  - After fix: service sees 3 windows including keyboard, can find "Go"/"Search" buttons
+- Added findAppByName() to VoxAccessibilityService
+  - Queries PackageManager for installed apps
+  - Matches by exact name first, then partial match
+  - "Camera" now resolves to com.google.android.GoogleCamera
+- Added `<queries>` tag to AndroidManifest for app visibility on Android 11+
+- Added UI tree hash comparison for feedback
+  - Stores hash of UI tree before action, compares after
+  - Appends [UI_FEEDBACK: screen changed/did NOT change] to action history
+- Updated prompt to teach Claude about UI feedback
+  - "No change + main action done = task likely complete"
+  - Prevents infinite loops (e.g., repeatedly tapping "Take photo")
+
+**Key Finding - Camera Thumbnail**:
+- Investigated camera app's accessibility tree before/after taking photo
+- The thumbnail button ("Photo gallery") has identical accessibility attributes before and after
+- Visual feedback (thumbnail image changing) is NOT exposed via accessibility API
+- This is why Claude kept tapping "Take photo" - no feedback in the tree
+
+**Known Limitation**:
+- UI feedback mechanism is not fully robust
+- If Claude taps randomly and UI doesn't change, it might falsely conclude "done"
+- Need to combine feedback with context about *what* was tapped and task goal
+
+---
 
 ### Session 9 — 2026-01-26
 **Focus**: Phase 7 Enhancement - Action History Context
