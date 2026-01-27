@@ -204,18 +204,20 @@ class MainActivity : AppCompatActivity() {
                                     return@postDelayed
                                 }
 
-                                // Wait for UI to update, then continue loop
-                                android.os.Handler(mainLooper).postDelayed({
-                                    // Add current action to history with execution result
-                                    val actionWithResult = "Step $stepNumber: $action → SUCCESS"
-                                    val updatedHistory = if (actionHistory.isEmpty()) {
-                                        actionWithResult
-                                    } else {
-                                        "$actionHistory\n$actionWithResult"
+                                // Wait for UI change event (or timeout), then continue loop
+                                VoxAccessibilityService.waitForUiChange(3000) {
+                                    runOnUiThread {
+                                        // Add current action to history with execution result
+                                        val actionWithResult = "Step $stepNumber: $action → SUCCESS"
+                                        val updatedHistory = if (actionHistory.isEmpty()) {
+                                            actionWithResult
+                                        } else {
+                                            "$actionHistory\n$actionWithResult"
+                                        }
+                                        // Pass current UI tree hash for comparison in next iteration
+                                        runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus, updatedHistory, currentUiTreeHash, installedApps)
                                     }
-                                    // Pass current UI tree hash for comparison in next iteration
-                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus, updatedHistory, currentUiTreeHash, installedApps)
-                                }, 1500) // Wait 1.5s for UI to update
+                                }
 
                             } catch (e: Exception) {
                                 // P7.4: Error handling

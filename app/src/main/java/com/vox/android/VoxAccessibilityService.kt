@@ -25,6 +25,32 @@ class VoxAccessibilityService : AccessibilityService() {
         private var instance: VoxAccessibilityService? = null
 
         fun getInstance(): VoxAccessibilityService? = instance
+
+        // Callback for UI change detection (event-based waiting)
+        @Volatile
+        private var uiChangeCallback: (() -> Unit)? = null
+
+        // Set a one-shot callback that fires when UI changes
+        fun waitForUiChange(timeoutMs: Long, callback: () -> Unit) {
+            uiChangeCallback = callback
+            // Timeout fallback in case no event arrives
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                uiChangeCallback?.let {
+                    Log.d(TAG, "UI change timeout after ${timeoutMs}ms")
+                    uiChangeCallback = null
+                    it()
+                }
+            }, timeoutMs)
+        }
+
+        // Called when UI changes - triggers the callback if set
+        private fun notifyUiChange() {
+            uiChangeCallback?.let {
+                Log.d(TAG, "UI change detected, triggering callback")
+                uiChangeCallback = null
+                it()
+            }
+        }
     }
 
     override fun onServiceConnected() {
@@ -36,6 +62,14 @@ class VoxAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Phase 4: UI Tree Capture
         Log.d(TAG, "Accessibility event: ${event?.eventType} from ${event?.packageName}")
+
+        // Notify callback on meaningful UI change events
+        when (event?.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                notifyUiChange()
+            }
+        }
 
         // P4.2: Get root window
         // NOTE: rootInActiveWindow returns the UI tree of the currently ACTIVE window
