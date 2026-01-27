@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "vox-phone": {
+      "command": "/Users/abhishek/Documents/bigmac/android-vox/sdk/mcp/venv/bin/python",
+      "args": ["/Users/abhishek/Documents/bigmac/android-vox/sdk/mcp/vox_mcp_server.py"],
+      "env": {
+        "VOX_PHONE_HOST": "localhost",
+        "VOX_PHONE_PORT": "8080"
+      }
+    }
+  }
+}

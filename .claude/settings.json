@@ -4,5 +4,6 @@
       "Bash(JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" ./scripts/deploy.sh:*)",
       "Bash(adb logcat:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true
 }
