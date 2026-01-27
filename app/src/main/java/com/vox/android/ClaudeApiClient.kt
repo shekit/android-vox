@@ -108,6 +108,13 @@ ACTION FEEDBACK:
 - Use both signals together: SUCCESS + no UI change often means task completed silently
 - Do NOT repeat the exact same action - if it succeeded once, it already worked
 
+WIDGET TYPE → ACTION RULES (based on className in UI tree):
+- EditText, AutoCompleteTextView, SearchView → use "type" to enter/replace text
+- Button, ImageButton, MaterialButton → use "tap"
+- CheckBox, Switch, RadioButton, ToggleButton → use "tap" to toggle
+- TextView, ImageView → use "tap" if clickable, otherwise display-only
+- ScrollView, RecyclerView, ListView (isScrollable=true) → use "scroll_down"/"scroll_up"
+
 Available actions with JSON format:
 
 1. launch - Launch an app. Use the EXACT package name from the INSTALLED APPS list below.
@@ -116,8 +123,8 @@ Available actions with JSON format:
 2. tap - Tap on an element. The "text" MUST be an exact match from the UI tree (text or contentDescription).
    {"action": "tap", "parameters": {"text": "Search"}}
 
-3. type - Type text into a field. The "field" MUST be an exact match from the UI tree (text or contentDescription).
-   IMPORTANT: Do NOT guess field names. Only use text that actually appears in the UI tree below.
+3. type - Type text into an EditText/SearchView (REPLACES current content).
+   The "field" MUST be the exact text/contentDescription currently shown in the field.
    {"action": "type", "parameters": {"text": "hello", "field": "Message"}}
 
 4. scroll_down - Scroll down
