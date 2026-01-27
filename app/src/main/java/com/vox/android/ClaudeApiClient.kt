@@ -14,7 +14,7 @@ class ClaudeApiClient(
 ) {
 
     companion object {
-        private const val TAG = "ClaudeApiClient"
+        private const val TAG = "Vox"
         private const val API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
         // Default model - can be changed via constructor

@@ -25,6 +25,9 @@
 .DS_Store
 Thumbs.db
 
+# Debug logs
+/logs/
+
 # API keys and secrets
 local.properties
 *.keystore

@@ -18,7 +18,7 @@ import java.util.concurrent.Executors
 class VoxAccessibilityService : AccessibilityService() {
 
     companion object {
-        private const val TAG = "VoxAccessibility"
+        private const val TAG = "Vox"
 
         // Shared storage for the latest UI tree (P4.5)
         @Volatile

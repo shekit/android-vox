@@ -5,7 +5,7 @@ import org.json.JSONObject
 
 // P6.4: Parse Claude response
 object ClaudeResponseParser {
-    private const val TAG = "ClaudeResponseParser"
+    private const val TAG = "Vox"
 
     data class ParsedResponse(
         val action: String,

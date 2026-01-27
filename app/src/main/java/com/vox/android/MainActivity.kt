@@ -15,7 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val TAG = "VoxMain"
+        private const val TAG = "Vox"
         private const val PREFS_NAME = "VoxPrefs"
         private const val KEY_API_KEY = "claude_api_key"
         private const val KEY_SELECTED_MODEL = "selected_model"
