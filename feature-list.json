@@ -438,8 +438,8 @@
           "id": "P9.7",
           "description": "Add configuration via environment variables",
           "test": "VOX_PHONE_HOST, VOX_PHONE_PORT, VOX_AUTH_TOKEN configure connection",
-          "passes": false,
-          "notes": "Sensible defaults, env vars for customization"
+          "passes": true,
+          "notes": "Defaults: localhost:8080, env vars override, phone_connect params override env vars"
         },
         {
           "id": "P9.8",
