@@ -403,8 +403,8 @@
           "id": "P9.2",
           "description": "Implement phone_connect tool",
           "test": "Tool connects to phone WebSocket, returns connection status",
-          "passes": false,
-          "notes": "Reuses vox_client.py, manages persistent connection"
+          "passes": true,
+          "notes": "Reuses vox_client.py, manages persistent connection with global lock"
         },
         {
           "id": "P9.3",
