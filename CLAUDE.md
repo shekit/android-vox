@@ -60,7 +60,7 @@ This ensures:
 
 ### Development Feedback Loop
 
-After writing or changing code, always follow this loop:
+For **your own testing** (you run the app, you check logs):
 
 ```
 Build → Deploy → Check Logs → Understand → Fix → Repeat
@@ -116,7 +116,7 @@ Add logging at key points:
 
 ### Debugging with User Tests
 
-When the user runs a manual test and you need to capture logs:
+For **manual tests** (user runs something, you capture logs afterward):
 
 1. **Before test** — Clear the log buffer:
    ```bash
