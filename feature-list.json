@@ -417,8 +417,8 @@
           "id": "P9.4",
           "description": "Implement phone_get_ui_tree tool",
           "test": "Tool returns UI tree JSON with tappable elements",
-          "passes": false,
-          "notes": "Simplified tree showing text, clickable, bounds"
+          "passes": true,
+          "notes": "Returns full UI tree JSON from accessibility service"
         },
         {
           "id": "P9.5",
