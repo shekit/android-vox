@@ -113,10 +113,11 @@ Available actions with JSON format:
 1. launch - Launch an app. Use the EXACT package name from the INSTALLED APPS list below.
    {"action": "launch", "parameters": {"app": "com.google.android.GoogleCamera"}}
 
-2. tap - Tap on an element
+2. tap - Tap on an element. The "text" MUST be an exact match from the UI tree (text or contentDescription).
    {"action": "tap", "parameters": {"text": "Search"}}
 
-3. type - Type text into a field
+3. type - Type text into a field. The "field" MUST be an exact match from the UI tree (text or contentDescription).
+   IMPORTANT: Do NOT guess field names. Only use text that actually appears in the UI tree below.
    {"action": "type", "parameters": {"text": "hello", "field": "Message"}}
 
 4. scroll_down - Scroll down
