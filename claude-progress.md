@@ -2,10 +2,53 @@
 
 ## Current Status
 
-**Phase**: Phase 9 Complete
-**State**: MCP Server for Claude Code integration
+**Phase**: Phase 10 Complete
+**State**: MCP optimizations for Claude Code
 
 ## Session History
+
+### Session 15 — 2026-01-27
+**Focus**: MCP optimizations - compact UI tree, phone_get_apps, exact package IDs
+
+**Completed**:
+- Implemented compact UI tree representation (80-90% size reduction):
+  - Added `isActionable()`, `hasContent()`, `isRelevant()` methods to UINode
+  - Added `toCompactJson()` for minimal JSON with short property names
+  - Added `collectRelevantNodes()` for flat list instead of nested tree
+  - Added `toCompactJsonString()` to UITree for compact output
+- Added `phone_get_apps()` MCP tool:
+  - Returns list of installed apps with display names and package names
+  - Claude should call this before launching apps to get exact package IDs
+- Removed fuzzy app name matching from device side:
+  - `launch` command now only accepts exact package IDs (bundle IDs)
+  - No more hidden fuzzy matching that could cause confusion
+- Fixed `phone_get_state()` return type:
+  - FastMCP doesn't support `List[Union[str, Image]]` return type
+  - Changed to return JSON string only
+  - Call `phone_get_screenshot()` separately when image is needed
+
+**Files Modified**:
+- `UITree.kt` - Compact JSON methods
+- `RemoteProtocol.kt` - GetApps command, AppsResponse, compact flag
+- `RemoteControlServer.kt` - GetApps handler, compact support
+- `vox_client.py` - get_apps(), compact parameter
+- `vox_mcp_server.py` - phone_get_apps(), fixed phone_get_state return type
+- `AccessibilityActionExecutor.kt` - Removed fuzzy matching
+
+**Key Fix**:
+- Original UI tree was 97k+ characters, causing token limit issues
+- Compact tree is ~2-5k characters with only actionable elements
+
+**MCP Tools** (updated):
+- `phone_connect(host?, port?, auth_token?)` - Connect to phone
+- `phone_get_screenshot()` - Get screen image for vision analysis
+- `phone_get_ui_tree()` - Get accessibility tree JSON (compact by default)
+- `phone_execute(action)` - Execute tap, type, scroll, launch, back, home, enter
+- `phone_get_state()` - Get UI tree + foreground package (no screenshot, use phone_get_screenshot separately)
+- `phone_get_apps()` - Get list of installed apps with package names
+- `phone_disconnect()` - Disconnect from phone
+
+---
 
 ### Session 14 — 2026-01-27
 **Focus**: Phase 9 - MCP Server for Claude Code
