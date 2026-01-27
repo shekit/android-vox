@@ -26,13 +26,14 @@ class ClaudeApiClient(private val apiKey: String) {
         userCommand: String,
         uiTree: String,
         previousActions: String = "",
+        installedApps: Map<String, String> = emptyMap(),
         callback: (success: Boolean, response: String?, error: String?) -> Unit
     ) {
         Log.d(TAG, "Sending request to Claude API")
         Log.d(TAG, "Command: $userCommand")
         Log.d(TAG, "UI tree length: ${uiTree.length} chars")
 
-        val requestBody = buildRequestBody(userCommand, uiTree, previousActions)
+        val requestBody = buildRequestBody(userCommand, uiTree, previousActions, installedApps)
         val request = Request.Builder()
             .url(API_URL)
             .addHeader("x-api-key", apiKey)
@@ -70,9 +71,19 @@ class ClaudeApiClient(private val apiKey: String) {
         })
     }
 
-    private fun buildRequestBody(userCommand: String, uiTree: String, previousActions: String): String {
+    private fun buildRequestBody(userCommand: String, uiTree: String, previousActions: String, installedApps: Map<String, String>): String {
         val actionHistory = if (previousActions.isNotEmpty()) {
             "\n\nPrevious actions taken:\n$previousActions"
+        } else {
+            ""
+        }
+
+        // Format installed apps list for the prompt
+        val appListText = if (installedApps.isNotEmpty()) {
+            val appLines = installedApps.entries.take(100).joinToString("\n") { (name, pkg) ->
+                "- $name: $pkg"
+            }
+            "\n\nINSTALLED APPS (name: package):\n$appLines"
         } else {
             ""
         }
@@ -87,17 +98,20 @@ IMPORTANT:
 - If the UI tree shows android-vox's interface, IGNORE it and launch the app needed for the user's task
 - Focus on executing the user's request on OTHER apps, not on android-vox itself
 
-UI FEEDBACK:
-- After each action, you will receive feedback about whether the screen changed
+ACTION FEEDBACK:
+- Each action in history shows its result: "→ SUCCESS" means the element was found and clicked
+- After each action, you also see UI feedback about whether the screen changed
 - [UI_FEEDBACK: The screen changed...] means your action had a visible effect
-- [UI_FEEDBACK: The screen did NOT change...] means your action completed silently (e.g., taking a photo, sending a message)
-- If the screen didn't change AND you performed the main task action (like tapping "Take photo"), the task is likely DONE
-- Do NOT repeat the same action if the UI didn't change - this usually means the action completed successfully
+- [UI_FEEDBACK: The screen did NOT change...] means either:
+  (a) The action completed silently (e.g., taking a photo, sending a message) - if SUCCESS
+  (b) The action had no effect - consider trying a different approach
+- Use both signals together: SUCCESS + no UI change often means task completed silently
+- Do NOT repeat the exact same action - if it succeeded once, it already worked
 
 Available actions with JSON format:
 
-1. launch - Launch an app (use app name like "Camera", "Chrome", "Gmail" - it will be resolved automatically)
-   {"action": "launch", "parameters": {"app": "Camera"}}
+1. launch - Launch an app. Use the EXACT package name from the INSTALLED APPS list below.
+   {"action": "launch", "parameters": {"app": "com.google.android.GoogleCamera"}}
 
 2. tap - Tap on an element
    {"action": "tap", "parameters": {"text": "Search"}}
@@ -123,7 +137,7 @@ Available actions with JSON format:
 9. done - Task complete or impossible
    {"action": "done"}
 
-You MUST respond with a valid JSON object matching the schema.$actionHistory
+You MUST respond with a valid JSON object matching the schema.$actionHistory$appListText
 
 UI Tree (JSON):
 $uiTree
@@ -153,7 +167,7 @@ $uiTree
                     put("properties", JSONObject().apply {
                         put("app", JSONObject().apply {
                             put("type", "string")
-                            put("description", "Package name for launch action (e.g., com.android.chrome)")
+                            put("description", "Package name (bundle ID) from the INSTALLED APPS list. Must be exact match like com.google.android.GoogleCamera")
                         })
                         put("text", JSONObject().apply {
                             put("type", "string")

@@ -80,8 +80,12 @@ class MainActivity : AppCompatActivity() {
 
             editCommand.text.clear()
 
+            // Get installed apps list for Claude
+            val installedApps = service.getInstalledApps()
+            Log.d(TAG, "Found ${installedApps.size} installed apps")
+
             // P7.2: Start the command loop
-            runCommandLoop(command, apiKey, service)
+            runCommandLoop(command, apiKey, service, installedApps = installedApps)
         }
     }
 
@@ -119,7 +123,8 @@ class MainActivity : AppCompatActivity() {
         stepNumber: Int = 1,
         statusLog: String = "",
         actionHistory: String = "",
-        previousUiTreeHash: Int = 0
+        previousUiTreeHash: Int = 0,
+        installedApps: Map<String, String> = emptyMap()
     ) {
         Log.d(TAG, "Command loop step $stepNumber")
 
@@ -156,7 +161,7 @@ class MainActivity : AppCompatActivity() {
         // Send request to Claude with UI change feedback
         val historyWithFeedback = actionHistory + uiChangeInfo
         val client = ClaudeApiClient(apiKey)
-        client.sendRequest(userCommand, uiTree, historyWithFeedback) { success, response, error ->
+        client.sendRequest(userCommand, uiTree, historyWithFeedback, installedApps) { success, response, error ->
             runOnUiThread {
                 if (success && response != null) {
                     // Parse Claude response
@@ -201,14 +206,15 @@ class MainActivity : AppCompatActivity() {
 
                                 // Wait for UI to update, then continue loop
                                 android.os.Handler(mainLooper).postDelayed({
-                                    // Add current action to history
+                                    // Add current action to history with execution result
+                                    val actionWithResult = "Step $stepNumber: $action → SUCCESS"
                                     val updatedHistory = if (actionHistory.isEmpty()) {
-                                        "Step $stepNumber: $action"
+                                        actionWithResult
                                     } else {
-                                        "$actionHistory\nStep $stepNumber: $action"
+                                        "$actionHistory\n$actionWithResult"
                                     }
                                     // Pass current UI tree hash for comparison in next iteration
-                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus, updatedHistory, currentUiTreeHash)
+                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus, updatedHistory, currentUiTreeHash, installedApps)
                                 }, 1500) // Wait 1.5s for UI to update
 
                             } catch (e: Exception) {
@@ -268,11 +274,15 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             action.startsWith("launch ", ignoreCase = true) -> {
-                val appName = action.substring(7).trim()
-                // First try to find the app by name, then fall back to using it as package name
-                val packageName = service.findAppByName(appName) ?: appName
+                val appOrPackage = action.substring(7).trim()
+                // If it looks like a package name (contains dots), use directly; otherwise try to resolve by name
+                val packageName = if (appOrPackage.contains(".")) {
+                    appOrPackage
+                } else {
+                    service.findAppByName(appOrPackage) ?: appOrPackage
+                }
                 val success = service.launchApp(packageName)
-                if (success) "Launched $appName" else "Could not launch $appName"
+                if (success) "Launched $packageName" else "Could not launch $packageName"
             }
             action.equals("scroll down", ignoreCase = true) || action.equals("scroll", ignoreCase = true) -> {
                 val success = service.scrollForwardInActiveWindow()
