@@ -8,7 +8,7 @@
 ## Session History
 
 ### Session 11 — 2026-01-26
-**Focus**: Send installed apps list to Claude for accurate app launching
+**Focus**: Send installed apps list to Claude, event-based UI change detection
 
 **Completed**:
 - Added `installedApps` parameter to ClaudeApiClient.sendRequest()
@@ -17,6 +17,10 @@
 - Updated JSON schema description for "app" parameter
 - Modified executeAction() to detect package names (contain dots) vs app names
 - Added SUCCESS feedback to action history for better task completion detection
+- Replaced fixed 1.5s delay with event-based UI change detection
+  - Added `waitForUiChange(timeoutMs, callback)` to VoxAccessibilityService
+  - Listens for TYPE_WINDOW_STATE_CHANGED and TYPE_WINDOW_CONTENT_CHANGED
+  - Proceeds immediately on UI change, or times out after 3s
 
 **Implementation Details**:
 - `service.getInstalledApps()` returns Map<String, String> (name → package)
