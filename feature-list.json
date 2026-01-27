@@ -396,8 +396,8 @@
           "id": "P9.1",
           "description": "Create MCP server skeleton",
           "test": "Python MCP server starts and registers with Claude Code",
-          "passes": false,
-          "notes": "sdk/mcp/vox_mcp_server.py using mcp Python package"
+          "passes": true,
+          "notes": "sdk/mcp/vox_mcp_server.py using mcp Python package with FastMCP"
         },
         {
           "id": "P9.2",

@@ -32,3 +32,6 @@ Thumbs.db
 local.properties
 *.keystore
 !debug.keystore
+
+venv
+__pycache__
