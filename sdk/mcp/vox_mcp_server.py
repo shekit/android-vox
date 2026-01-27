@@ -52,12 +52,13 @@ This MCP server provides tools to control an Android phone via the Vox accessibi
 CRITICAL WORKFLOW - Follow this for every task:
 1. Connect to the phone using phone_connect()
 2. ALWAYS call phone_get_state() before taking any action
-   - This returns BOTH a screenshot (visual) AND the ui_tree (structured data)
+   - This returns the ui_tree (structured data) with all actionable/labeled elements
    - The ui_tree contains exact text, content descriptions, and resource IDs for all elements
 3. Analyze the ui_tree to find your target element - use its EXACT text or resource ID
 4. Execute the appropriate action using phone_execute() with identifiers from the ui_tree
 5. Call phone_get_state() again to verify the result and see the new screen
-6. Repeat steps 3-5 until the task is complete
+6. Call phone_get_screenshot() to visually confirm the action worked
+7. Repeat steps 3-6 until the task is complete
 
 KEY PRINCIPLE: The ui_tree is your source of truth. Every action that targets an element
 (tap, type, long_press) MUST use text or IDs found in the ui_tree. Never guess element names
@@ -66,6 +67,11 @@ based on what you think a button might say - always verify in the tree first.
 Example:
 - DON'T guess: "tap Send" (might be wrong)
 - DO: Look at ui_tree, find the actual text is "SMS", use "tap SMS"
+
+LAUNCHING APPS:
+- Before launching an app, call phone_get_apps() to get the list of installed apps
+- The launch command ONLY accepts exact package IDs (e.g., "com.android.chrome")
+- DON'T guess package names - look them up first
 
 Available actions for phone_execute:
 - tap <text>: Tap on element containing text (e.g., "tap Settings")
@@ -78,7 +84,7 @@ Available actions for phone_execute:
 - swipe_down: Swipe down (e.g., to pull down notifications)
 - type <text>: Type text into the focused field (e.g., "type hello world")
 - type <text> into <field>: Type into specific field (e.g., "type john into Username")
-- launch <app>: Launch app by name or package (e.g., "launch Camera" or "launch com.google.android.GoogleCamera")
+- launch <package>: Launch app by exact package ID (e.g., "launch com.google.android.GoogleCamera")
 - back: Press the back button
 - home: Press the home button
 - enter: Press the enter/submit button
