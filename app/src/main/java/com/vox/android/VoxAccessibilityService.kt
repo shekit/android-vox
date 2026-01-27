@@ -449,14 +449,75 @@ class VoxAccessibilityService : AccessibilityService() {
 
     fun typeTextByText(nodeText: String, textToType: String): Boolean {
         val node = findNodeByText(nodeText)
-        return if (node != null) {
+        if (node == null) {
+            Log.w(TAG, "Cannot type text: node with text '$nodeText' not found")
+            return false
+        }
+
+        // Check if the found node is editable
+        val isEditable = node.isEditable ||
+            node.className?.toString()?.contains("EditText", ignoreCase = true) == true
+
+        if (isEditable) {
             val success = typeText(node, textToType)
             node.recycle()
-            success
-        } else {
-            Log.w(TAG, "Cannot type text: node with text '$nodeText' not found")
-            false
+            return success
         }
+
+        // Node is not editable (e.g., TextView hint), try to find the focused EditText
+        Log.d(TAG, "Found node '$nodeText' is not editable (${node.className}), looking for focused input")
+        node.recycle()
+
+        // Look for the currently focused editable node
+        val focusedNode = findFocusedEditableNode()
+        if (focusedNode != null) {
+            Log.d(TAG, "Found focused editable node: ${focusedNode.className}")
+            val success = typeText(focusedNode, textToType)
+            focusedNode.recycle()
+            return success
+        }
+
+        Log.w(TAG, "No editable node found for text '$nodeText'")
+        return false
+    }
+
+    private fun findFocusedEditableNode(): AccessibilityNodeInfo? {
+        val rootNode = rootInActiveWindow ?: return null
+        val focused = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (focused != null && (focused.isEditable ||
+            focused.className?.toString()?.contains("EditText", ignoreCase = true) == true)) {
+            rootNode.recycle()
+            return focused
+        }
+        focused?.recycle()
+
+        // Fallback: search for any EditText in the tree
+        val editText = findEditableNodeRecursive(rootNode)
+        rootNode.recycle()
+        return editText
+    }
+
+    private fun findEditableNodeRecursive(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // Check if this node is editable
+        if (node.isEditable || node.className?.toString()?.contains("EditText", ignoreCase = true) == true) {
+            return node
+        }
+
+        // Search children
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                val found = findEditableNodeRecursive(child)
+                if (found != null) {
+                    if (found !== child) {
+                        child.recycle()
+                    }
+                    return found
+                }
+                child.recycle()
+            }
+        }
+        return null
     }
 
     // P5.5: Scroll action works
