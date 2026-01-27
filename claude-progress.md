@@ -2,10 +2,50 @@
 
 ## Current Status
 
-**Phase**: Phase 8 Complete
-**State**: Modular architecture with WebSocket server for cloud control (cleaned up)
+**Phase**: Phase 9 Complete
+**State**: MCP Server for Claude Code integration
 
 ## Session History
+
+### Session 14 — 2026-01-27
+**Focus**: Phase 9 - MCP Server for Claude Code
+
+**Completed**:
+- P9.1: Created MCP server skeleton (sdk/mcp/vox_mcp_server.py) using FastMCP
+- P9.2: Implemented phone_connect tool with persistent connection management
+- P9.3: Implemented phone_get_screenshot tool returning MCP Image
+- P9.4: Implemented phone_get_ui_tree tool returning JSON
+- P9.5: Implemented phone_execute tool for all action types
+- P9.6: Implemented phone_get_state tool for combined state
+- P9.7: Added environment variable configuration (VOX_PHONE_HOST, VOX_PHONE_PORT, VOX_AUTH_TOKEN)
+- P9.8: Added comprehensive README with setup instructions for VS Code and Claude Desktop
+- P9.9: End-to-end test verified all tools work
+
+**New Files**:
+- `sdk/mcp/vox_mcp_server.py` - MCP server exposing phone control as tools
+- `sdk/mcp/requirements.txt` - Dependencies (mcp, websockets)
+- `sdk/mcp/README.md` - Setup and usage documentation
+
+**UI Changes**:
+- Added "Start Server" button to MainActivity for starting Remote Control service
+
+**Fixes**:
+- Fixed vox_client.py websockets 16.x compatibility (is_connected property)
+
+**Architecture**:
+```
+User → Claude Code → MCP Server → WebSocket → Phone → Action
+```
+
+**MCP Tools**:
+- `phone_connect(host?, port?, auth_token?)` - Connect to phone
+- `phone_get_screenshot()` - Get screen image for vision analysis
+- `phone_get_ui_tree()` - Get accessibility tree JSON
+- `phone_execute(action)` - Execute tap, type, scroll, launch, back, home, enter
+- `phone_get_state(include_screenshot?)` - Get full device state
+- `phone_disconnect()` - Disconnect from phone
+
+---
 
 ### Session 13 — 2026-01-27
 **Focus**: Code review and cleanup of external refactoring
