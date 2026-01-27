@@ -3,9 +3,34 @@
 ## Current Status
 
 **Phase**: Phase 7 Complete + Enhancements
-**State**: Multi-window keyboard access, app name lookup, UI feedback mechanism
+**State**: Installed apps list sent to Claude, SUCCESS feedback, robust app launching
 
 ## Session History
+
+### Session 11 — 2026-01-26
+**Focus**: Send installed apps list to Claude for accurate app launching
+
+**Completed**:
+- Added `installedApps` parameter to ClaudeApiClient.sendRequest()
+- Format installed apps as "name: package" list in Claude's prompt
+- Updated prompt to tell Claude to use exact package names from the list
+- Updated JSON schema description for "app" parameter
+- Modified executeAction() to detect package names (contain dots) vs app names
+- Added SUCCESS feedback to action history for better task completion detection
+
+**Implementation Details**:
+- `service.getInstalledApps()` returns Map<String, String> (name → package)
+- List is passed through runCommandLoop to every API call
+- Prompt includes: "INSTALLED APPS (name: package):\n- Camera: com.google.android.GoogleCamera\n..."
+- Claude now picks exact package name like "com.google.android.GoogleCamera" instead of guessing "Camera"
+- Fallback: if Claude returns non-package string, still tries findAppByName()
+
+**Rationale**:
+- Previously Claude guessed app names based on general knowledge
+- If guess was wrong (e.g., "Camera" on a device with non-Google camera), app launch failed
+- Now Claude sees actual installed apps and picks the correct package
+
+---
 
 ### Session 10 — 2026-01-26
 **Focus**: Fix primitives, add app lookup, add UI feedback for task completion
