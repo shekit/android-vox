@@ -72,10 +72,10 @@ Build → Deploy → Check Logs → Understand → Fix → Repeat
 2. **Deploy & Launch**: `./scripts/deploy.sh --launch`
    - Builds, installs, and launches in one command
 
-3. **Check Logs**: `adb logcat -d | grep -i "vox\|exception\|error\|crash"`
-   - Look for crashes, exceptions, and app-specific logs
-   - The app should include logging at key points (events, state changes, errors)
-   - Use `adb logcat` (streaming) to watch behavior in real-time if needed
+3. **Check Logs**: `adb logcat -d > logs/vox-logs.txt`
+   - Dump all logs to file, filter when reading
+   - App logs: `grep "Vox" logs/vox-logs.txt`
+   - Crashes: `grep -i "exception\|error\|crash" logs/vox-logs.txt`
 
 4. **Understand**: Read the logs to see what actually happened
    - Did the code path execute?
@@ -103,12 +103,40 @@ This loop is mandatory. Never assume code works just because it compiled — alw
 
 ### Logging in Code
 
-Add logging at key points so there's something useful to check:
+All app logs use the unified tag `"Vox"`. This makes filtering simple:
+```kotlin
+private const val TAG = "Vox"
+Log.d(TAG, "Your message here")
+```
+
+Add logging at key points:
 - Important events (button clicks, accessibility events received)
 - State changes (service enabled, API response received)
 - Errors and exceptions (with context about what was happening)
 
-Use a consistent tag so logs are easy to filter.
+### Debugging with User Tests
+
+When the user runs a manual test and you need to capture logs:
+
+1. **Before test** — Clear the log buffer:
+   ```bash
+   adb logcat -c
+   ```
+
+2. **User runs their test**
+
+3. **After test** — Dump all logs to file:
+   ```bash
+   adb logcat -d > logs/vox-logs.txt
+   ```
+
+4. **Filter when reading**:
+   ```bash
+   grep "Vox" logs/vox-logs.txt          # App logs only
+   grep -i "crash\|exception" logs/vox-logs.txt  # Errors
+   ```
+
+The `logs/` folder is gitignored. Each test overwrites the previous file. Dump everything, filter later — you never know what you'll need.
 
 ### Ending a Session
 - Commit all work in progress
@@ -128,6 +156,8 @@ android-vox/
 │   │   ├── res/               # Resources (layouts, strings, etc.)
 │   │   └── AndroidManifest.xml
 │   └── build.gradle.kts
+├── logs/                       # Debug logs (gitignored)
+│   └── vox-logs.txt           # Captured logs from tests
 ├── scripts/
 │   └── deploy.sh              # Build/install/launch script
 ├── init.sh                    # Environment bootstrap
@@ -150,10 +180,9 @@ adb devices                    # Check connected devices
 ./scripts/deploy.sh --clean    # Clean build
 
 # Logs & Debugging
-adb logcat -d                  # Dump recent logs
-adb logcat                     # Stream logs (Ctrl+C to stop)
-adb logcat -c                  # Clear log buffer
-adb logcat -s "TAG:*"          # Filter by tag
+adb logcat -c                          # Clear buffer before tests
+adb logcat -d > logs/vox-logs.txt      # Dump all logs to file
+grep "Vox" logs/vox-logs.txt           # Filter app logs when reading
 adb shell dumpsys activity activities | grep -A5 "mResumed"  # Current activity
 ```
 
