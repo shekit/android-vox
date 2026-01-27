@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.vox.android.ai.ClaudeDecisionService
 import com.vox.android.ai.OpenRouterClient
+import com.vox.android.control.remote.RemoteControlService
 import com.vox.android.core.models.Command
 import com.vox.android.orchestration.CommandOrchestrator
 import com.vox.android.orchestration.ExecutionState
@@ -35,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var spinnerModel: Spinner
     private lateinit var editCommand: EditText
     private lateinit var buttonAskClaude: Button
+    private lateinit var buttonRemoteControl: Button
     private lateinit var textResponse: TextView
 
     private var orchestrator: CommandOrchestrator? = null
@@ -51,10 +53,12 @@ class MainActivity : AppCompatActivity() {
         spinnerModel = findViewById(R.id.spinnerModel)
         editCommand = findViewById(R.id.editCommand)
         buttonAskClaude = findViewById(R.id.buttonAskClaude)
+        buttonRemoteControl = findViewById(R.id.buttonRemoteControl)
         textResponse = findViewById(R.id.textResponse)
 
         setupModelSpinner()
         loadApiKey()
+        updateRemoteControlButton()
 
         buttonSaveApiKey.setOnClickListener {
             val apiKey = editApiKey.text.toString().trim()
@@ -71,6 +75,10 @@ class MainActivity : AppCompatActivity() {
             executeCommand()
         }
 
+        buttonRemoteControl.setOnClickListener {
+            toggleRemoteControl()
+        }
+
         // Observe execution state
         lifecycleScope.launch {
             VoxAccessibilityService.uiChangeEvents.collectLatest {
@@ -82,6 +90,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "MainActivity onResume")
+        updateRemoteControlButton()
     }
 
     override fun onDestroy() {
@@ -255,5 +264,37 @@ class MainActivity : AppCompatActivity() {
         return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(KEY_SELECTED_MODEL, OpenRouterClient.DEFAULT_MODEL)
             ?: OpenRouterClient.DEFAULT_MODEL
+    }
+
+    // ========== Remote Control ==========
+
+    private fun toggleRemoteControl() {
+        if (RemoteControlService.isRunning()) {
+            RemoteControlService.stop(this)
+            textResponse.text = "Remote control server stopped"
+        } else {
+            val apiKey = getApiKey()
+            val model = getSelectedModel()
+            RemoteControlService.start(
+                context = this,
+                port = 8080,
+                authToken = null,
+                apiKey = apiKey,
+                model = model
+            )
+            textResponse.text = "Remote control server starting on port 8080..."
+        }
+        // Update button after a short delay to let service state change
+        android.os.Handler(mainLooper).postDelayed({
+            updateRemoteControlButton()
+        }, 500)
+    }
+
+    private fun updateRemoteControlButton() {
+        buttonRemoteControl.text = if (RemoteControlService.isRunning()) {
+            "Stop Server"
+        } else {
+            "Start Server"
+        }
     }
 }

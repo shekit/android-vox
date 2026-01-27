@@ -166,11 +166,25 @@ Once configured, you can ask Claude Code:
 
 Claude will use the MCP tools to control your phone autonomously.
 
+## USB Connection via ADB Port Forwarding
+
+If your phone is connected via USB and you can't reach it over the network, use ADB port forwarding:
+
+```bash
+# Forward local port 8080 to phone's port 8080
+adb forward tcp:8080 tcp:8080
+
+# Now use localhost in your configuration
+VOX_PHONE_HOST=localhost
+```
+
+This allows the MCP server to connect to the phone through the USB connection.
+
 ## Troubleshooting
 
 ### Connection refused
-- Ensure the Vox Remote Control service is running on the phone
-- Check that the phone and computer are on the same network
+- Ensure the Vox Remote Control service is running on the phone (tap "Start Server" in the app)
+- Check that the phone and computer are on the same network, OR use ADB port forwarding
 - Verify the IP address and port are correct
 
 ### Authentication failed

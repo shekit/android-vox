@@ -84,7 +84,15 @@ class VoxClient:
 
     @property
     def is_connected(self) -> bool:
-        return self.ws is not None and self.ws.open
+        if self.ws is None:
+            return False
+        try:
+            # websockets 16.x uses state property
+            from websockets import State
+            return self.ws.state == State.OPEN
+        except (ImportError, AttributeError):
+            # Fallback for older versions
+            return getattr(self.ws, 'open', False)
 
     async def connect(self):
         """Connect to the server."""

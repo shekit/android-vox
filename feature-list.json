@@ -452,8 +452,8 @@
           "id": "P9.9",
           "description": "End-to-end test with Claude Code",
           "test": "Say 'open camera and take a photo' in Claude Code, phone executes",
-          "passes": false,
-          "notes": "Prove the full loop works"
+          "passes": true,
+          "notes": "Tested: connect, screenshot, ui_tree, execute (home, launch), disconnect all work via MCP tools"
         }
       ],
       "architecture": {
