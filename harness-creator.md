@@ -43,6 +43,10 @@ Never rely on the user's shell configuration (`~/.zshrc`, `~/.bashrc`). Instead:
 - Use project config files where the platform supports it
 - Have init scripts verify and set up the environment
 
+### Documentation Lookup
+
+Use the Context7 MCP to look up current library documentation before implementing code with external libraries. Don't rely on training data for API details — models, API shapes, and parameters change frequently.
+
 ## Setup Steps
 
 ### 1. Create Feature List

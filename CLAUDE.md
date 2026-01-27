@@ -29,6 +29,10 @@ Building a minimal test harness:
 - Work on ONE feature at a time
 - Update `feature-list.json` when a feature passes/fails
 
+## Documentation Lookup
+
+Use the Context7 MCP to look up current library documentation before implementing code with external libraries. Don't rely on training data for API details — models, API shapes, and parameters change frequently.
+
 ### CRITICAL: Commit After EVERY Feature
 
 **This is a hard requirement. Do not batch commits.**
