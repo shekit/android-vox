@@ -10,51 +10,74 @@ import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.annotation.RequiresApi
+import com.vox.android.core.interfaces.ActionExecutor
+import com.vox.android.core.interfaces.DeviceStateProvider
+import com.vox.android.core.models.UITree
+import com.vox.android.device.AccessibilityActionExecutor
+import com.vox.android.device.AccessibilityStateProvider
+import com.vox.android.device.AppManager
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * Thin wrapper around Android AccessibilityService.
+ * Delegates to DeviceStateProvider and ActionExecutor implementations.
+ *
+ * Maintains backward compatibility with existing code while enabling
+ * the new modular architecture.
+ */
 class VoxAccessibilityService : AccessibilityService() {
+
+    // Device layer components
+    private lateinit var stateProvider: AccessibilityStateProvider
+    private lateinit var actionExecutor: AccessibilityActionExecutor
+    private lateinit var appManager: AppManager
 
     companion object {
         private const val TAG = "Vox"
 
-        // Shared storage for the latest UI tree (P4.5)
+        // Shared executor for screenshot capture
+        private val screenshotExecutor = Executors.newSingleThreadExecutor()
+
+        // Shared storage for the latest UI tree (backward compatibility)
         @Volatile
         var latestTreeJson: String = ""
             private set
 
         fun getLatestTree(): String = latestTreeJson
 
-        // Shared reference to the service instance (P5.1)
+        // Shared reference to the service instance
         @Volatile
         private var instance: VoxAccessibilityService? = null
 
         fun getInstance(): VoxAccessibilityService? = instance
 
-        // Callback for UI change detection (event-based waiting)
-        @Volatile
-        private var uiChangeCallback: (() -> Unit)? = null
+        // UI change callback using AtomicReference to prevent race conditions
+        private val uiChangeCallback = AtomicReference<(() -> Unit)?>(null)
 
-        // Set a one-shot callback that fires when UI changes
+        // UI change events flow for new architecture
+        private val _uiChangeEvents = MutableSharedFlow<UITree>(replay = 1)
+        val uiChangeEvents: SharedFlow<UITree> = _uiChangeEvents.asSharedFlow()
+
         fun waitForUiChange(timeoutMs: Long, callback: () -> Unit) {
-            uiChangeCallback = callback
-            // Timeout fallback in case no event arrives
+            uiChangeCallback.set(callback)
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                uiChangeCallback?.let {
+                uiChangeCallback.getAndSet(null)?.let {
                     Log.d(TAG, "UI change timeout after ${timeoutMs}ms")
-                    uiChangeCallback = null
                     it()
                 }
             }, timeoutMs)
         }
 
-        // Called when UI changes - triggers the callback if set
         private fun notifyUiChange() {
-            uiChangeCallback?.let {
+            uiChangeCallback.getAndSet(null)?.let {
                 Log.d(TAG, "UI change detected, triggering callback")
-                uiChangeCallback = null
                 it()
             }
         }
@@ -63,14 +86,19 @@ class VoxAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+
+        // Initialize device layer components
+        stateProvider = AccessibilityStateProvider(this)
+        actionExecutor = AccessibilityActionExecutor(this, stateProvider)
+        appManager = AppManager(this)
+
         Log.d(TAG, "Accessibility service connected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Phase 4: UI Tree Capture
         Log.d(TAG, "Accessibility event: ${event?.eventType} from ${event?.packageName}")
 
-        // Notify callback on meaningful UI change events
+        // Notify callbacks on meaningful UI change events
         when (event?.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
@@ -78,99 +106,16 @@ class VoxAccessibilityService : AccessibilityService() {
             }
         }
 
-        // P4.2: Get root window
-        // NOTE: rootInActiveWindow returns the UI tree of the currently ACTIVE window
-        // If android-vox is in foreground, this will be android-vox's tree
-        // For Phase 7: target app must be in foreground to capture its tree
+        // Update latest tree JSON (backward compatibility)
         val rootNode = rootInActiveWindow
         if (rootNode != null) {
-            Log.d(TAG, "Got root window: package=${rootNode.packageName}, " +
-                    "childCount=${rootNode.childCount}, className=${rootNode.className}")
-
-            // P4.3: Traverse tree
             try {
-                val nodeCount = traverseTree(rootNode, 0)
-                Log.d(TAG, "Traversed $nodeCount nodes in the tree")
-
-                // P4.4: Serialize tree to JSON
-                val jsonTree = serializeTreeToJson(rootNode)
-                val jsonString = jsonTree.toString()
-                latestTreeJson = jsonString
-                Log.d(TAG, "JSON tree: ${jsonString.take(500)}...") // Log first 500 chars
+                latestTreeJson = serializeTreeToJson(rootNode).toString()
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing tree", e)
             }
-
             rootNode.recycle()
-        } else {
-            Log.w(TAG, "Root window is null")
         }
-    }
-
-    private fun traverseTree(node: AccessibilityNodeInfo, depth: Int): Int {
-        var count = 1 // Count this node
-
-        // Log node info (limit logging to prevent spam)
-        if (depth < 3) {
-            Log.v(TAG, "${"  ".repeat(depth)}Node: ${node.className}, " +
-                    "text=${node.text}, contentDesc=${node.contentDescription}, " +
-                    "clickable=${node.isClickable}, children=${node.childCount}")
-        }
-
-        // Traverse children
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                count += traverseTree(child, depth + 1)
-                child.recycle()
-            }
-        }
-
-        return count
-    }
-
-    private fun serializeTreeToJson(node: AccessibilityNodeInfo): JSONObject {
-        val json = JSONObject()
-
-        // Basic properties
-        json.put("className", node.className?.toString() ?: "")
-        json.put("packageName", node.packageName?.toString() ?: "")
-        json.put("text", node.text?.toString() ?: "")
-        json.put("contentDescription", node.contentDescription?.toString() ?: "")
-        json.put("viewIdResourceName", node.viewIdResourceName ?: "")
-
-        // State properties
-        json.put("isClickable", node.isClickable)
-        json.put("isLongClickable", node.isLongClickable)
-        json.put("isFocusable", node.isFocusable)
-        json.put("isEnabled", node.isEnabled)
-        json.put("isPassword", node.isPassword)
-        json.put("isScrollable", node.isScrollable)
-        json.put("isChecked", node.isChecked)
-        json.put("isCheckable", node.isCheckable)
-
-        // Bounds
-        val bounds = android.graphics.Rect()
-        node.getBoundsInScreen(bounds)
-        val boundsJson = JSONObject()
-        boundsJson.put("left", bounds.left)
-        boundsJson.put("top", bounds.top)
-        boundsJson.put("right", bounds.right)
-        boundsJson.put("bottom", bounds.bottom)
-        json.put("bounds", boundsJson)
-
-        // Children
-        val childrenArray = JSONArray()
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                childrenArray.put(serializeTreeToJson(child))
-                child.recycle()
-            }
-        }
-        json.put("children", childrenArray)
-
-        return json
     }
 
     override fun onInterrupt() {
@@ -183,548 +128,31 @@ class VoxAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Accessibility service destroyed")
     }
 
-    // P5.1: Launch app by package name
-    fun launchApp(packageName: String): Boolean {
-        return try {
-            val intent = packageManager.getLaunchIntentForPackage(packageName)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-                Log.d(TAG, "Launched app: $packageName")
-                true
-            } else {
-                Log.e(TAG, "No launch intent found for package: $packageName")
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error launching app $packageName", e)
-            false
-        }
-    }
+    // ========== New Architecture Access ==========
 
-    // Search for installed apps by name and return package name
-    fun findAppByName(appName: String): String? {
-        return try {
-            val pm = packageManager
-            val mainIntent = Intent(Intent.ACTION_MAIN, null)
-            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            val apps = pm.queryIntentActivities(mainIntent, 0)
+    fun getStateProvider(): DeviceStateProvider = stateProvider
+    fun getActionExecutor(): ActionExecutor = actionExecutor
+    fun getAppManager(): AppManager = appManager
 
-            val searchLower = appName.lowercase()
+    // ========== Backward Compatibility Methods ==========
+    // These delegate to the new components while maintaining the old API
 
-            // First try exact match
-            for (app in apps) {
-                val label = app.loadLabel(pm).toString()
-                if (label.equals(appName, ignoreCase = true)) {
-                    Log.d(TAG, "Found exact match for '$appName': ${app.activityInfo.packageName}")
-                    return app.activityInfo.packageName
-                }
-            }
+    fun launchApp(packageName: String): Boolean = actionExecutor.launchApp(packageName)
+    fun findAppByName(appName: String): String? = stateProvider.findAppByName(appName)
+    fun getInstalledApps(): Map<String, String> = appManager.getInstalledAppsMap()
+    fun isPackageInstalled(packageName: String): Boolean = stateProvider.isPackageInstalled(packageName)
+    fun tapByText(text: String): Boolean = actionExecutor.tapByText(text)
+    fun typeTextByText(nodeText: String, textToType: String): Boolean = actionExecutor.typeText(nodeText, textToType)
+    fun scrollForwardInActiveWindow(): Boolean = actionExecutor.scroll(true)
+    fun scrollBackwardInActiveWindow(): Boolean = actionExecutor.scroll(false)
+    fun pressBack(): Boolean = actionExecutor.pressBack()
+    fun pressHome(): Boolean = actionExecutor.pressHome()
+    fun pressEnter(): Boolean = actionExecutor.pressEnter()
 
-            // Then try contains match
-            for (app in apps) {
-                val label = app.loadLabel(pm).toString().lowercase()
-                if (label.contains(searchLower) || searchLower.contains(label)) {
-                    Log.d(TAG, "Found partial match for '$appName': ${app.activityInfo.packageName} (label: ${app.loadLabel(pm)})")
-                    return app.activityInfo.packageName
-                }
-            }
-
-            Log.w(TAG, "No app found matching: $appName")
-            null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error searching for app: $appName", e)
-            null
-        }
-    }
-
-    // Get list of installed launchable apps (name -> package)
-    fun getInstalledApps(): Map<String, String> {
-        return try {
-            val pm = packageManager
-            val mainIntent = Intent(Intent.ACTION_MAIN, null)
-            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-            val apps = pm.queryIntentActivities(mainIntent, 0)
-
-            apps.associate {
-                it.loadLabel(pm).toString() to it.activityInfo.packageName
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting installed apps", e)
-            emptyMap()
-        }
-    }
-
-    // P5.2: Find node by text/id
-    fun findNodeByText(text: String): AccessibilityNodeInfo? {
-        val rootNode = rootInActiveWindow ?: run {
-            Log.w(TAG, "Cannot find node: root window is null")
-            return null
-        }
-
-        val found = findNodeByTextRecursive(rootNode, text)
-        if (found != null) {
-            Log.d(TAG, "Found node with text '$text': ${found.className}")
-            // Only recycle root if found is a different node (deeper in tree)
-            if (found !== rootNode) {
-                rootNode.recycle()
-            }
-            return found
-        } else {
-            Log.w(TAG, "No node found with text: $text")
-            rootNode.recycle()
-            return null
-        }
-    }
-
-    private fun findNodeByTextRecursive(node: AccessibilityNodeInfo, text: String): AccessibilityNodeInfo? {
-        // Check if this node matches
-        if (node.text?.toString()?.contains(text, ignoreCase = true) == true ||
-            node.contentDescription?.toString()?.contains(text, ignoreCase = true) == true) {
-            return node
-        }
-
-        // Search children
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                val found = findNodeByTextRecursive(child, text)
-                if (found != null) {
-                    // Only recycle child if found is a deeper descendant (not the child itself)
-                    if (found !== child) {
-                        child.recycle()
-                    }
-                    return found
-                }
-                child.recycle()
-            }
-        }
-
-        return null
-    }
-
-    fun findNodeById(resourceId: String): AccessibilityNodeInfo? {
-        val rootNode = rootInActiveWindow ?: run {
-            Log.w(TAG, "Cannot find node: root window is null")
-            return null
-        }
-
-        val found = findNodeByIdRecursive(rootNode, resourceId)
-        if (found != null) {
-            Log.d(TAG, "Found node with id '$resourceId': ${found.className}")
-            // Only recycle root if found is a different node (deeper in tree)
-            if (found !== rootNode) {
-                rootNode.recycle()
-            }
-            return found
-        } else {
-            Log.w(TAG, "No node found with id: $resourceId")
-            rootNode.recycle()
-            return null
-        }
-    }
-
-    private fun findNodeByIdRecursive(node: AccessibilityNodeInfo, resourceId: String): AccessibilityNodeInfo? {
-        // Check if this node matches
-        if (node.viewIdResourceName?.contains(resourceId) == true) {
-            return node
-        }
-
-        // Search children
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                val found = findNodeByIdRecursive(child, resourceId)
-                if (found != null) {
-                    // Only recycle child if found is a deeper descendant (not the child itself)
-                    if (found !== child) {
-                        child.recycle()
-                    }
-                    return found
-                }
-                child.recycle()
-            }
-        }
-
-        return null
-    }
-
-    // P5.3: Tap action works
-    fun tapNode(node: AccessibilityNodeInfo): Boolean {
-        return try {
-            // If the node itself is clickable, tap it
-            if (node.isClickable) {
-                val success = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                if (success) {
-                    Log.d(TAG, "Tapped node: ${node.className}, text=${node.text}")
-                } else {
-                    Log.w(TAG, "Tap action returned false for node: ${node.className}")
-                }
-                success
-            } else {
-                // Try to find a clickable parent
-                var parent = node.parent
-                while (parent != null) {
-                    if (parent.isClickable) {
-                        val success = parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                        if (success) {
-                            Log.d(TAG, "Tapped parent node: ${parent.className}, text=${parent.text}")
-                        } else {
-                            Log.w(TAG, "Tap action returned false for parent: ${parent.className}")
-                        }
-                        parent.recycle()
-                        return success
-                    }
-                    val nextParent = parent.parent
-                    parent.recycle()
-                    parent = nextParent
-                }
-                Log.w(TAG, "Node and its parents are not clickable: ${node.className}")
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error tapping node", e)
-            false
-        }
-    }
-
-    fun tapByText(text: String): Boolean {
-        val node = findNodeByText(text)
-        return if (node != null) {
-            val success = tapNode(node)
-            node.recycle()
-            success
-        } else {
-            Log.w(TAG, "Cannot tap: node with text '$text' not found")
-            false
-        }
-    }
-
-    fun tapById(resourceId: String): Boolean {
-        val node = findNodeById(resourceId)
-        return if (node != null) {
-            val success = tapNode(node)
-            node.recycle()
-            success
-        } else {
-            Log.w(TAG, "Cannot tap: node with id '$resourceId' not found")
-            false
-        }
-    }
-
-    // P5.4: Type text action works
-    fun typeText(node: AccessibilityNodeInfo, text: String): Boolean {
-        return try {
-            // Focus the node first
-            node.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-
-            // Set the text
-            val arguments = android.os.Bundle()
-            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
-            val success = node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-
-            if (success) {
-                Log.d(TAG, "Typed text '$text' into node: ${node.className}")
-            } else {
-                Log.w(TAG, "Type text action returned false for node: ${node.className}")
-            }
-            success
-        } catch (e: Exception) {
-            Log.e(TAG, "Error typing text into node", e)
-            false
-        }
-    }
-
-    fun typeTextById(resourceId: String, text: String): Boolean {
-        val node = findNodeById(resourceId)
-        return if (node != null) {
-            val success = typeText(node, text)
-            node.recycle()
-            success
-        } else {
-            Log.w(TAG, "Cannot type text: node with id '$resourceId' not found")
-            false
-        }
-    }
-
-    fun typeTextByText(nodeText: String, textToType: String): Boolean {
-        val node = findNodeByText(nodeText)
-        if (node == null) {
-            Log.w(TAG, "Cannot type text: node with text '$nodeText' not found")
-            return false
-        }
-
-        // Check if the found node is editable
-        val isEditable = node.isEditable ||
-            node.className?.toString()?.contains("EditText", ignoreCase = true) == true
-
-        if (isEditable) {
-            val success = typeText(node, textToType)
-            node.recycle()
-            return success
-        }
-
-        // Node is not editable (e.g., TextView hint), try to find the focused EditText
-        Log.d(TAG, "Found node '$nodeText' is not editable (${node.className}), looking for focused input")
-        node.recycle()
-
-        // Look for the currently focused editable node
-        val focusedNode = findFocusedEditableNode()
-        if (focusedNode != null) {
-            Log.d(TAG, "Found focused editable node: ${focusedNode.className}")
-            val success = typeText(focusedNode, textToType)
-            focusedNode.recycle()
-            return success
-        }
-
-        Log.w(TAG, "No editable node found for text '$nodeText'")
-        return false
-    }
-
-    private fun findFocusedEditableNode(): AccessibilityNodeInfo? {
-        val rootNode = rootInActiveWindow ?: return null
-        val focused = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (focused != null && (focused.isEditable ||
-            focused.className?.toString()?.contains("EditText", ignoreCase = true) == true)) {
-            rootNode.recycle()
-            return focused
-        }
-        focused?.recycle()
-
-        // Fallback: search for any EditText in the tree
-        val editText = findEditableNodeRecursive(rootNode)
-        rootNode.recycle()
-        return editText
-    }
-
-    private fun findEditableNodeRecursive(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        // Check if this node is editable
-        if (node.isEditable || node.className?.toString()?.contains("EditText", ignoreCase = true) == true) {
-            return node
-        }
-
-        // Search children
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                val found = findEditableNodeRecursive(child)
-                if (found != null) {
-                    if (found !== child) {
-                        child.recycle()
-                    }
-                    return found
-                }
-                child.recycle()
-            }
-        }
-        return null
-    }
-
-    // P5.5: Scroll action works
-    fun scrollForward(node: AccessibilityNodeInfo): Boolean {
-        return try {
-            val success = node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)
-            if (success) {
-                Log.d(TAG, "Scrolled forward in node: ${node.className}")
-            } else {
-                Log.w(TAG, "Scroll forward action returned false for node: ${node.className}")
-            }
-            success
-        } catch (e: Exception) {
-            Log.e(TAG, "Error scrolling forward", e)
-            false
-        }
-    }
-
-    fun scrollBackward(node: AccessibilityNodeInfo): Boolean {
-        return try {
-            val success = node.performAction(AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
-            if (success) {
-                Log.d(TAG, "Scrolled backward in node: ${node.className}")
-            } else {
-                Log.w(TAG, "Scroll backward action returned false for node: ${node.className}")
-            }
-            success
-        } catch (e: Exception) {
-            Log.e(TAG, "Error scrolling backward", e)
-            false
-        }
-    }
-
-    fun scrollForwardInActiveWindow(): Boolean {
-        val rootNode = rootInActiveWindow ?: run {
-            Log.w(TAG, "Cannot scroll: root window is null")
-            return false
-        }
-
-        // Find a scrollable node in the tree
-        val scrollableNode = findScrollableNode(rootNode)
-        if (scrollableNode != null) {
-            val success = scrollForward(scrollableNode)
-            scrollableNode.recycle()
-            // Only recycle root if it's different from scrollable node
-            if (scrollableNode !== rootNode) {
-                rootNode.recycle()
-            }
-            return success
-        } else {
-            Log.w(TAG, "No scrollable node found in active window")
-            rootNode.recycle()
-            return false
-        }
-    }
-
-    fun scrollBackwardInActiveWindow(): Boolean {
-        val rootNode = rootInActiveWindow ?: run {
-            Log.w(TAG, "Cannot scroll: root window is null")
-            return false
-        }
-
-        // Find a scrollable node in the tree
-        val scrollableNode = findScrollableNode(rootNode)
-        if (scrollableNode != null) {
-            val success = scrollBackward(scrollableNode)
-            scrollableNode.recycle()
-            // Only recycle root if it's different from scrollable node
-            if (scrollableNode !== rootNode) {
-                rootNode.recycle()
-            }
-            return success
-        } else {
-            Log.w(TAG, "No scrollable node found in active window")
-            rootNode.recycle()
-            return false
-        }
-    }
-
-    private fun findScrollableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        // Check if this node is scrollable
-        if (node.isScrollable) {
-            return node
-        }
-
-        // Search children
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                val found = findScrollableNode(child)
-                if (found != null) {
-                    // Only recycle child if found is a deeper descendant (not the child itself)
-                    if (found !== child) {
-                        child.recycle()
-                    }
-                    return found
-                }
-                child.recycle()
-            }
-        }
-
-        return null
-    }
-
-    // P5.6: Back action works
-    fun pressBack(): Boolean {
-        return try {
-            val success = performGlobalAction(GLOBAL_ACTION_BACK)
-            if (success) {
-                Log.d(TAG, "Pressed back button")
-            } else {
-                Log.w(TAG, "Back action returned false")
-            }
-            success
-        } catch (e: Exception) {
-            Log.e(TAG, "Error pressing back", e)
-            false
-        }
-    }
-
-    fun pressHome(): Boolean {
-        return try {
-            val success = performGlobalAction(GLOBAL_ACTION_HOME)
-            if (success) {
-                Log.d(TAG, "Pressed home button")
-            } else {
-                Log.w(TAG, "Home action returned false")
-            }
-            success
-        } catch (e: Exception) {
-            Log.e(TAG, "Error pressing home", e)
-            false
-        }
-    }
-
-    fun pressEnter(): Boolean {
-        return try {
-            // Strategy 1: Search ALL windows for keyboard action buttons (Go, Search, etc.)
-            // The keyboard is a separate window from the app
-            val allWindows = windows
-            Log.d(TAG, "Searching ${allWindows.size} windows for keyboard action button")
-
-            for (window in allWindows) {
-                val windowRoot = window.root ?: continue
-                Log.d(TAG, "Checking window: ${window.title}, type=${window.type}")
-
-                val keyboardButton = findKeyboardActionButton(windowRoot)
-                if (keyboardButton != null) {
-                    val success = keyboardButton.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                    keyboardButton.recycle()
-                    windowRoot.recycle()
-                    if (success) {
-                        Log.d(TAG, "Pressed Enter via keyboard action button in window: ${window.title}")
-                        return true
-                    }
-                }
-                windowRoot.recycle()
-            }
-
-            Log.w(TAG, "Could not press Enter - no keyboard button found in ${allWindows.size} windows")
-            false
-        } catch (e: Exception) {
-            Log.e(TAG, "Error pressing enter", e)
-            false
-        }
-    }
-
-    private fun findKeyboardActionButton(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        // Look for common keyboard action button texts
-        val actionTexts = listOf("Go", "Search", "Submit", "Send", "Done", "Next")
-
-        for (actionText in actionTexts) {
-            val found = findNodeByTextRecursive(node, actionText)
-            if (found != null && found.isClickable) {
-                return found
-            }
-            found?.recycle()
-        }
-
-        return null
-    }
-
-    private fun findFocusedNode(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
-        if (node == null) return null
-        if (node.isFocused) return node
-
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            val focused = findFocusedNode(child)
-            if (focused != null) {
-                // Only recycle child if focused is a deeper descendant (not the child itself)
-                if (focused !== child) {
-                    child.recycle()
-                }
-                return focused
-            }
-            child.recycle()
-        }
-        return null
-    }
-
-    // Screenshot capture (Android 11+)
     @RequiresApi(Build.VERSION_CODES.R)
     fun captureScreenshot(callback: (String?) -> Unit) {
         try {
-            val executor = Executors.newSingleThreadExecutor()
-            takeScreenshot(Display.DEFAULT_DISPLAY, executor, object : TakeScreenshotCallback {
+            takeScreenshot(Display.DEFAULT_DISPLAY, screenshotExecutor, object : TakeScreenshotCallback {
                 override fun onSuccess(screenshot: ScreenshotResult) {
                     try {
                         val hardwareBuffer = screenshot.hardwareBuffer
@@ -732,48 +160,71 @@ class VoxAccessibilityService : AccessibilityService() {
                         val bitmap = Bitmap.wrapHardwareBuffer(hardwareBuffer, colorSpace)
 
                         if (bitmap != null) {
-                            // Convert to software bitmap for compression
                             val softwareBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)
-
-                            // Compress to JPEG with reduced quality for smaller payload
                             val byteArrayOutputStream = ByteArrayOutputStream()
                             softwareBitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
                             val base64 = Base64.encodeToString(byteArrayOutputStream.toByteArray(), Base64.NO_WRAP)
-
                             Log.d(TAG, "Screenshot captured: ${base64.length} chars base64")
-
                             softwareBitmap.recycle()
                             hardwareBuffer.close()
-
-                            // Callback on main thread
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                callback(base64)
-                            }
+                            android.os.Handler(android.os.Looper.getMainLooper()).post { callback(base64) }
                         } else {
-                            Log.e(TAG, "Screenshot bitmap is null")
                             hardwareBuffer.close()
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                callback(null)
-                            }
+                            android.os.Handler(android.os.Looper.getMainLooper()).post { callback(null) }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error processing screenshot", e)
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                            callback(null)
-                        }
+                        android.os.Handler(android.os.Looper.getMainLooper()).post { callback(null) }
                     }
                 }
 
                 override fun onFailure(errorCode: Int) {
                     Log.e(TAG, "Screenshot failed with error code: $errorCode")
-                    android.os.Handler(android.os.Looper.getMainLooper()).post {
-                        callback(null)
-                    }
+                    android.os.Handler(android.os.Looper.getMainLooper()).post { callback(null) }
                 }
             })
         } catch (e: Exception) {
             Log.e(TAG, "Error taking screenshot", e)
             callback(null)
         }
+    }
+
+    // JSON serialization for backward compatibility
+    private fun serializeTreeToJson(node: AccessibilityNodeInfo): JSONObject {
+        val json = JSONObject()
+        json.put("className", node.className?.toString() ?: "")
+        json.put("packageName", node.packageName?.toString() ?: "")
+        json.put("text", node.text?.toString() ?: "")
+        json.put("contentDescription", node.contentDescription?.toString() ?: "")
+        json.put("viewIdResourceName", node.viewIdResourceName ?: "")
+        json.put("isClickable", node.isClickable)
+        json.put("isLongClickable", node.isLongClickable)
+        json.put("isFocusable", node.isFocusable)
+        json.put("isEnabled", node.isEnabled)
+        json.put("isPassword", node.isPassword)
+        json.put("isScrollable", node.isScrollable)
+        json.put("isChecked", node.isChecked)
+        json.put("isCheckable", node.isCheckable)
+
+        val bounds = android.graphics.Rect()
+        node.getBoundsInScreen(bounds)
+        val boundsJson = JSONObject()
+        boundsJson.put("left", bounds.left)
+        boundsJson.put("top", bounds.top)
+        boundsJson.put("right", bounds.right)
+        boundsJson.put("bottom", bounds.bottom)
+        json.put("bounds", boundsJson)
+
+        val childrenArray = JSONArray()
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i)
+            if (child != null) {
+                childrenArray.put(serializeTreeToJson(child))
+                child.recycle()
+            }
+        }
+        json.put("children", childrenArray)
+
+        return json
     }
 }

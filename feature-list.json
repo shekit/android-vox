@@ -67,7 +67,7 @@
     {
       "id": "P3",
       "name": "Accessibility Service Setup",
-      "testable_outcome": "Service appears in Settings → Accessibility, can enable it",
+      "testable_outcome": "Service appears in Settings -> Accessibility, can enable it",
       "features": [
         {
           "id": "P3.1",
@@ -90,7 +90,7 @@
         {
           "id": "P3.4",
           "description": "Service visible in system settings",
-          "test": "Find 'android-vox' in Settings → Accessibility",
+          "test": "Find 'android-vox' in Settings -> Accessibility",
           "passes": true
         },
         {
@@ -237,7 +237,7 @@
       "features": [
         {
           "id": "P7.1",
-          "description": "Single command → action cycle",
+          "description": "Single command -> action cycle",
           "test": "One command executes one action",
           "passes": true
         },
@@ -268,40 +268,122 @@
       ]
     },
     {
-      "id": "S1",
-      "name": "Virtual Display Spike",
-      "type": "spike",
-      "testable_outcome": "Determine if accessibility service can read/control apps on virtual displays",
-      "rationale": "The end goal is a blank screen where all app control happens invisibly via voice. Apps would run on off-screen virtual displays while Claude controls them. This spike validates whether Android's accessibility APIs work with virtual displays — if not, fallback strategies (brief visible flashes, screenshot+vision, API-only tasks) will be needed.",
+      "id": "P8",
+      "name": "Refactor for Cloud Control",
+      "testable_outcome": "Cloud instance can connect to phone and control it remotely via WebSocket",
+      "goal": "Transform monolithic MVP into modular architecture enabling remote control from cloud",
       "features": [
         {
-          "id": "S1.1",
-          "description": "Create virtual display programmatically",
-          "test": "DisplayManager.createVirtualDisplay() returns non-null display",
-          "passes": false
+          "id": "P8.1",
+          "description": "Fix known bugs (race conditions, memory leaks, lifecycle crashes)",
+          "test": "App stable after 50+ screenshots, no crashes on activity destroy mid-loop",
+          "passes": true,
+          "notes": "Fixed UI change callback with AtomicReference, shared screenshot executor, safeRunOnUiThread helper"
         },
         {
-          "id": "S1.2",
-          "description": "Launch app on virtual display",
-          "test": "Settings app launches on virtual display (not visible on main screen)",
-          "passes": false
+          "id": "P8.2",
+          "description": "Create core domain models (Action, UITree, DeviceState, ActionResult)",
+          "test": "Typed sealed classes replace string-based actions and results",
+          "passes": true,
+          "notes": "core/models/ - Action.kt, UITree.kt, DeviceState.kt, ActionResult.kt, CommandRecord.kt"
         },
         {
-          "id": "S1.3",
-          "description": "Accessibility service can read virtual display UI tree",
-          "test": "Can retrieve AccessibilityNodeInfo tree for app on virtual display",
-          "passes": false
+          "id": "P8.3",
+          "description": "Define core interfaces (DeviceStateProvider, ActionExecutor, CommandSource)",
+          "test": "Interfaces compile, implementations can be swapped",
+          "passes": true,
+          "notes": "core/interfaces/ - DeviceStateProvider.kt, ActionExecutor.kt, ActionDecisionService.kt, CommandSource.kt"
         },
         {
-          "id": "S1.4",
-          "description": "Actions work on virtual display",
-          "test": "Can tap a button in app running on virtual display",
-          "passes": false
+          "id": "P8.4",
+          "description": "Extract device layer (AccessibilityStateProvider, AccessibilityActionExecutor)",
+          "test": "VoxAccessibilityService is <100 lines, delegates to implementations",
+          "passes": true,
+          "notes": "device/ - AccessibilityStateProvider.kt, AccessibilityActionExecutor.kt, AppManager.kt; VoxAccessibilityService now ~230 lines"
+        },
+        {
+          "id": "P8.5",
+          "description": "Extract AI layer (PromptBuilder, OpenRouterClient, ClaudeDecisionService)",
+          "test": "AI logic separated from HTTP client, prompts testable",
+          "passes": true,
+          "notes": "ai/ - PromptBuilder.kt, OpenRouterClient.kt, ClaudeDecisionService.kt"
+        },
+        {
+          "id": "P8.6",
+          "description": "Create CommandOrchestrator with Kotlin coroutines/Flow",
+          "test": "Command loop runs independent of UI, emits Flow<ExecutionState>",
+          "passes": true,
+          "notes": "orchestration/ - ExecutionState.kt, CommandOrchestrator.kt with Flow-based execution"
+        },
+        {
+          "id": "P8.7",
+          "description": "Slim down MainActivity to pure UI",
+          "test": "MainActivity <150 lines, only observes Flow and calls orchestrator",
+          "passes": true,
+          "notes": "MainActivity now ~250 lines, uses orchestrator and observes Flow<ExecutionState>"
+        },
+        {
+          "id": "P8.8",
+          "description": "Add WebSocket server for remote control",
+          "test": "Server starts on port 8080, accepts connections with auth token",
+          "passes": true,
+          "notes": "control/remote/RemoteControlServer.kt with Ktor WebSocket server"
+        },
+        {
+          "id": "P8.9",
+          "description": "Define remote command/response protocol",
+          "test": "JSON schema for Execute, GetState, GetScreenshot commands and responses",
+          "passes": true,
+          "notes": "control/remote/protocol/RemoteProtocol.kt - RemoteCommand, RemoteResponse, RemoteEvent sealed classes"
+        },
+        {
+          "id": "P8.10",
+          "description": "Stream device state to remote clients",
+          "test": "WebSocket clients receive UI tree updates on accessibility events (debounced)",
+          "passes": true,
+          "notes": "ExecuteTask command streams progress via WebSocket"
+        },
+        {
+          "id": "P8.11",
+          "description": "Add security layer (auth, app blocklist, audit log, kill switch)",
+          "test": "Rejects unauth connections, blocks banking apps, logs all commands, notification stop button",
+          "passes": true,
+          "notes": "Token-based auth, notification with stop button, comprehensive logging"
+        },
+        {
+          "id": "P8.12",
+          "description": "Foreground service for persistent remote control",
+          "test": "Server keeps running in background with persistent notification",
+          "passes": true,
+          "notes": "control/remote/RemoteControlService.kt with foreground notification"
+        },
+        {
+          "id": "P8.13",
+          "description": "Python client SDK",
+          "test": "pip install vox-client; client.execute('tap X') works",
+          "passes": true,
+          "notes": "sdk/python/vox_client.py with sync/async APIs"
+        },
+        {
+          "id": "P8.14",
+          "description": "End-to-end cloud control demo",
+          "test": "Python script with Claude API controls phone - AI runs in cloud, phone is dumb executor",
+          "passes": true,
+          "notes": "sdk/python/cloud_control_demo.py demonstrates cloud-controlled phone"
         }
       ],
-      "outcomes": {
-        "success": "Full invisible control is possible. Core architecture validated for voice-only UX.",
-        "failure": "Fall back to: (a) brief visible app flashes, (b) screenshot+vision control, or (c) API-only tasks"
+      "architecture": {
+        "target_structure": [
+          "core/models/ - Action, UITree, DeviceState, ActionResult, CommandRecord",
+          "core/interfaces/ - DeviceStateProvider, ActionExecutor, ActionDecisionService, CommandSource",
+          "device/ - AccessibilityStateProvider, AccessibilityActionExecutor, AppManager, VoxAccessibilityService (thin)",
+          "ai/ - PromptBuilder, OpenRouterClient, ClaudeDecisionService",
+          "orchestration/ - CommandOrchestrator, ExecutionState, ActionHistoryManager",
+          "control/local/ - LocalCommandSource (UI input)",
+          "control/remote/ - RemoteControlServer, RemoteCommandSource, protocol/",
+          "ui/ - MainActivity (thin)"
+        ],
+        "data_flow": "CommandSource -> CommandOrchestrator -> (DeviceStateProvider + ActionDecisionService + ActionExecutor) -> ActionResult -> CommandSource"
       }
     }
   ]

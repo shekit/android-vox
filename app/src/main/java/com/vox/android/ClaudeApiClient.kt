@@ -107,11 +107,14 @@ class ClaudeApiClient(
             ""
         }
 
-        // Format installed apps list for the prompt
+        // Format installed apps list for the prompt (sorted alphabetically for consistency)
         val appListText = if (installedApps.isNotEmpty()) {
-            val appLines = installedApps.entries.take(100).joinToString("\n") { (name, pkg) ->
-                "- $name: $pkg"
-            }
+            val appLines = installedApps.entries
+                .sortedBy { it.key.lowercase() }
+                .take(100)
+                .joinToString("\n") { (name, pkg) ->
+                    "- $name: $pkg"
+                }
             "\n\nINSTALLED APPS (name: package):\n$appLines"
         } else {
             ""
