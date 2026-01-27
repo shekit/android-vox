@@ -27,13 +27,15 @@ class ClaudeApiClient(private val apiKey: String) {
         uiTree: String,
         previousActions: String = "",
         installedApps: Map<String, String> = emptyMap(),
+        screenshotBase64: String? = null,
         callback: (success: Boolean, response: String?, error: String?) -> Unit
     ) {
         Log.d(TAG, "Sending request to Claude API")
         Log.d(TAG, "Command: $userCommand")
         Log.d(TAG, "UI tree length: ${uiTree.length} chars")
+        Log.d(TAG, "Screenshot: ${if (screenshotBase64 != null) "${screenshotBase64.length} chars" else "none"}")
 
-        val requestBody = buildRequestBody(userCommand, uiTree, previousActions, installedApps)
+        val requestBody = buildRequestBody(userCommand, uiTree, previousActions, installedApps, screenshotBase64)
         val request = Request.Builder()
             .url(API_URL)
             .addHeader("x-api-key", apiKey)
@@ -71,7 +73,7 @@ class ClaudeApiClient(private val apiKey: String) {
         })
     }
 
-    private fun buildRequestBody(userCommand: String, uiTree: String, previousActions: String, installedApps: Map<String, String>): String {
+    private fun buildRequestBody(userCommand: String, uiTree: String, previousActions: String, installedApps: Map<String, String>, screenshotBase64: String?): String {
         val actionHistory = if (previousActions.isNotEmpty()) {
             "\n\nPrevious actions taken:\n$previousActions"
         } else {
@@ -99,14 +101,15 @@ IMPORTANT:
 - Focus on executing the user's request on OTHER apps, not on android-vox itself
 
 ACTION FEEDBACK:
-- Each action in history shows its result: "→ SUCCESS" means the element was found and clicked
+- Each action in history shows its result: "→ SUCCESS" or "→ FAILED: <reason>"
 - After each action, you also see UI feedback about whether the screen changed
 - [UI_FEEDBACK: The screen changed...] means your action had a visible effect
 - [UI_FEEDBACK: The screen did NOT change...] means either:
   (a) The action completed silently (e.g., taking a photo, sending a message) - if SUCCESS
   (b) The action had no effect - consider trying a different approach
 - Use both signals together: SUCCESS + no UI change often means task completed silently
-- Do NOT repeat the exact same action - if it succeeded once, it already worked
+- If an action FAILED, the element was not found - look at the CURRENT UI tree for what's available now
+- Do NOT repeat the exact same action - if it succeeded, it already worked; if it failed, try something different
 
 WIDGET TYPE → ACTION RULES (based on className in UI tree):
 - EditText, AutoCompleteTextView, SearchView → use "type" to enter/replace text
@@ -114,6 +117,12 @@ WIDGET TYPE → ACTION RULES (based on className in UI tree):
 - CheckBox, Switch, RadioButton, ToggleButton → use "tap" to toggle
 - TextView, ImageView → use "tap" if clickable, otherwise display-only
 - ScrollView, RecyclerView, ListView (isScrollable=true) → use "scroll_down"/"scroll_up"
+
+SCREENSHOT:
+- A screenshot of the current screen may be attached above
+- Use the screenshot to see visual elements, search results, suggestions, and UI layout
+- The UI tree provides text/element info; the screenshot shows what the user sees
+- If you see search results or suggestions in the screenshot, tap on the appropriate result
 
 Available actions with JSON format:
 
@@ -133,7 +142,7 @@ Available actions with JSON format:
 5. scroll_up - Scroll up
    {"action": "scroll_up"}
 
-6. back - Press back button
+6. back - Press back button (use sparingly - see BACK BUTTON rules below)
    {"action": "back"}
 
 7. home - Press home button
@@ -142,8 +151,21 @@ Available actions with JSON format:
 8. enter - Press Enter key (to submit forms, URLs)
    {"action": "enter"}
 
-9. done - Task complete or impossible
+9. done - Task complete or impossible (see TASK COMPLETION rules below)
    {"action": "done"}
+
+BACK BUTTON RULES:
+- Do NOT press "back" immediately after important actions (confirmations, bookings, sends)
+- After tapping "Confirm", "Book", "Send", "Submit", etc., WAIT to see the result
+- Only use "back" to navigate backwards in a flow (e.g., wrong screen), NOT to exit after completing an action
+- If pressing "back" accidentally returns you to android-vox, you went too far back
+
+TASK COMPLETION:
+- For booking tasks (Uber, flights, etc.): Task is done when you see confirmation of the booking (driver assigned, booking confirmed), NOT just after tapping "Confirm"
+- For messaging tasks: Task is done when the message is sent/delivered
+- For camera tasks: Task is done when the photo/video is captured
+- If you end up back at android-vox's UI unexpectedly, the task may NOT be complete - consider if more steps are needed
+- Say "done" only when you have EVIDENCE the task succeeded (confirmation screen, success message, etc.)
 
 You MUST respond with a valid JSON object matching the schema.$actionHistory$appListText
 
@@ -203,6 +225,17 @@ $uiTree
                 put(JSONObject().apply {
                     put("role", "user")
                     put("content", JSONArray().apply {
+                        // Add screenshot image if provided
+                        if (screenshotBase64 != null) {
+                            put(JSONObject().apply {
+                                put("type", "image")
+                                put("source", JSONObject().apply {
+                                    put("type", "base64")
+                                    put("media_type", "image/jpeg")
+                                    put("data", screenshotBase64)
+                                })
+                            })
+                        }
                         put(JSONObject().apply {
                             put("type", "text")
                             put("text", "System: $systemPrompt\n\nUser command: $userCommand")

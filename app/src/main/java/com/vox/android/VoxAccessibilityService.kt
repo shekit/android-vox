@@ -2,11 +2,18 @@ package com.vox.android
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Build
+import android.util.Base64
 import android.util.Log
+import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.annotation.RequiresApi
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.Executors
 
 class VoxAccessibilityService : AccessibilityService() {
 
@@ -649,5 +656,63 @@ class VoxAccessibilityService : AccessibilityService() {
             child.recycle()
         }
         return null
+    }
+
+    // Screenshot capture (Android 11+)
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun captureScreenshot(callback: (String?) -> Unit) {
+        try {
+            val executor = Executors.newSingleThreadExecutor()
+            takeScreenshot(Display.DEFAULT_DISPLAY, executor, object : TakeScreenshotCallback {
+                override fun onSuccess(screenshot: ScreenshotResult) {
+                    try {
+                        val hardwareBuffer = screenshot.hardwareBuffer
+                        val colorSpace = screenshot.colorSpace
+                        val bitmap = Bitmap.wrapHardwareBuffer(hardwareBuffer, colorSpace)
+
+                        if (bitmap != null) {
+                            // Convert to software bitmap for compression
+                            val softwareBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+
+                            // Compress to JPEG with reduced quality for smaller payload
+                            val byteArrayOutputStream = ByteArrayOutputStream()
+                            softwareBitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
+                            val base64 = Base64.encodeToString(byteArrayOutputStream.toByteArray(), Base64.NO_WRAP)
+
+                            Log.d(TAG, "Screenshot captured: ${base64.length} chars base64")
+
+                            softwareBitmap.recycle()
+                            hardwareBuffer.close()
+
+                            // Callback on main thread
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                callback(base64)
+                            }
+                        } else {
+                            Log.e(TAG, "Screenshot bitmap is null")
+                            hardwareBuffer.close()
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                callback(null)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing screenshot", e)
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            callback(null)
+                        }
+                    }
+                }
+
+                override fun onFailure(errorCode: Int) {
+                    Log.e(TAG, "Screenshot failed with error code: $errorCode")
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        callback(null)
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Error taking screenshot", e)
+            callback(null)
+        }
     }
 }

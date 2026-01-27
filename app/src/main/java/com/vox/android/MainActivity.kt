@@ -2,6 +2,7 @@ package com.vox.android
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -128,6 +129,14 @@ class MainActivity : AppCompatActivity() {
     ) {
         Log.d(TAG, "Command loop step $stepNumber")
 
+        // Safety: limit maximum steps to prevent runaway loops
+        val maxSteps = 20
+        if (stepNumber > maxSteps) {
+            textResponse.text = statusLog + "\nStopped: Reached maximum of $maxSteps steps"
+            Log.w(TAG, "Command loop stopped: exceeded max steps")
+            return
+        }
+
         // P7.3: Update status
         val status = if (statusLog.isEmpty()) {
             "Starting: $userCommand\n"
@@ -161,7 +170,10 @@ class MainActivity : AppCompatActivity() {
         // Send request to Claude with UI change feedback
         val historyWithFeedback = actionHistory + uiChangeInfo
         val client = ClaudeApiClient(apiKey)
-        client.sendRequest(userCommand, uiTree, historyWithFeedback, installedApps) { success, response, error ->
+
+        // Capture screenshot on step 2+ (after we've navigated to target app)
+        val sendApiRequest: (String?) -> Unit = { screenshotBase64 ->
+            client.sendRequest(userCommand, uiTree, historyWithFeedback, installedApps, screenshotBase64) { success, response, error ->
             runOnUiThread {
                 if (success && response != null) {
                     // Parse Claude response
@@ -195,20 +207,21 @@ class MainActivity : AppCompatActivity() {
                                 val result = executeAction(action, service)
                                 Log.d(TAG, "Step $stepNumber - Execution result: $result")
 
-                                // Check if action failed
-                                if (result.contains("failed", ignoreCase = true) ||
+                                // Check if action failed - pass failure as feedback to Claude
+                                val actionFailed = result.contains("failed", ignoreCase = true) ||
                                     result.contains("could not", ignoreCase = true) ||
-                                    result.contains("error", ignoreCase = true)) {
-                                    textResponse.text = updatedStatus + "Result: $result\n\nERROR: Action failed"
-                                    Log.e(TAG, "Action failed: $result")
-                                    return@postDelayed
+                                    result.contains("error", ignoreCase = true)
+
+                                if (actionFailed) {
+                                    Log.w(TAG, "Action failed: $result - passing feedback to Claude")
                                 }
 
                                 // Wait for UI change event (or timeout), then continue loop
                                 VoxAccessibilityService.waitForUiChange(3000) {
                                     runOnUiThread {
                                         // Add current action to history with execution result
-                                        val actionWithResult = "Step $stepNumber: $action → SUCCESS"
+                                        val resultLabel = if (actionFailed) "FAILED: $result" else "SUCCESS"
+                                        val actionWithResult = "Step $stepNumber: $action → $resultLabel"
                                         val updatedHistory = if (actionHistory.isEmpty()) {
                                             actionWithResult
                                         } else {
@@ -240,6 +253,16 @@ class MainActivity : AppCompatActivity() {
                     Log.e(TAG, "API error: $error")
                 }
             }
+        }
+        }
+
+        // Capture screenshot on step 2+ (Android 11+), or send without screenshot
+        if (stepNumber > 1 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            service.captureScreenshot { screenshot ->
+                sendApiRequest(screenshot)
+            }
+        } else {
+            sendApiRequest(null)
         }
     }
 
