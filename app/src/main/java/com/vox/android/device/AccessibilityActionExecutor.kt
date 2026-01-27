@@ -31,13 +31,9 @@ class AccessibilityActionExecutor(
     override suspend fun execute(action: Action): ActionResult {
         return when (action) {
             is Action.Launch -> {
-                val resolved = if (stateProvider.isPackageInstalled(action.packageName)) {
-                    action.packageName
-                } else {
-                    stateProvider.findAppByName(action.packageName) ?: action.packageName
-                }
-                if (launchApp(resolved)) {
-                    ActionResult.success(action, "Launched $resolved")
+                // Only accept exact package names (bundle IDs)
+                if (launchApp(action.packageName)) {
+                    ActionResult.success(action, "Launched ${action.packageName}")
                 } else {
                     ActionResult.failure(action, "Could not launch ${action.packageName}", FailureReason.APP_NOT_FOUND)
                 }

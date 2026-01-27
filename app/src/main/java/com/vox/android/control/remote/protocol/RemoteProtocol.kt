@@ -36,7 +36,8 @@ sealed class RemoteCommand {
     @Serializable
     data class GetState(
         override val id: String,
-        val includeScreenshot: Boolean = false
+        val includeScreenshot: Boolean = false,
+        val compact: Boolean = true  // Use compact UI tree by default
     ) : RemoteCommand()
 
     /** Get screenshot only */
@@ -48,7 +49,8 @@ sealed class RemoteCommand {
     /** Get UI tree only */
     @Serializable
     data class GetUITree(
-        override val id: String
+        override val id: String,
+        val compact: Boolean = true  // Use compact UI tree by default
     ) : RemoteCommand()
 
     /** Cancel current execution */
@@ -60,6 +62,12 @@ sealed class RemoteCommand {
     /** Ping for health check */
     @Serializable
     data class Ping(
+        override val id: String
+    ) : RemoteCommand()
+
+    /** Get list of installed apps */
+    @Serializable
+    data class GetApps(
         override val id: String
     ) : RemoteCommand()
 
@@ -79,9 +87,14 @@ sealed class RemoteCommand {
                         } ?: emptyMap()
                         ExecuteAction(id, action, params)
                     }
-                    "get_state" -> GetState(id, obj.optBoolean("include_screenshot", false))
+                    "get_state" -> GetState(
+                        id,
+                        obj.optBoolean("include_screenshot", false),
+                        obj.optBoolean("compact", true)
+                    )
                     "get_screenshot" -> GetScreenshot(id)
-                    "get_ui_tree" -> GetUITree(id)
+                    "get_ui_tree" -> GetUITree(id, obj.optBoolean("compact", true))
+                    "get_apps" -> GetApps(id)
                     "cancel" -> Cancel(id)
                     "ping" -> Ping(id)
                     else -> null
@@ -180,6 +193,14 @@ sealed class RemoteResponse {
         override val success = true
     }
 
+    /** Apps list response */
+    data class AppsResponse(
+        override val id: String,
+        val apps: List<Pair<String, String>>  // List of (name, packageName)
+    ) : RemoteResponse() {
+        override val success = true
+    }
+
     /** Error response */
     data class Error(
         override val id: String,
@@ -239,6 +260,17 @@ sealed class RemoteResponse {
             }
             is Pong -> {
                 json.put("type", "pong")
+            }
+            is AppsResponse -> {
+                json.put("type", "apps")
+                val appsArray = JSONArray()
+                apps.forEach { (name, pkg) ->
+                    val appJson = JSONObject()
+                    appJson.put("name", name)
+                    appJson.put("package", pkg)
+                    appsArray.put(appJson)
+                }
+                json.put("apps", appsArray)
             }
             is Error -> {
                 json.put("type", "error")

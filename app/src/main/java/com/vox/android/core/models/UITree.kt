@@ -121,6 +121,73 @@ data class UINode(
         }
         return null
     }
+
+    /** Check if this node is actionable or has meaningful content */
+    fun isActionable(): Boolean {
+        return isClickable || isLongClickable || isEditable || isScrollable || isCheckable
+    }
+
+    /** Check if this node has meaningful text content */
+    fun hasContent(): Boolean {
+        return text.isNotBlank() || contentDescription.isNotBlank()
+    }
+
+    /** Check if this node should be included in compact representation */
+    fun isRelevant(): Boolean {
+        return isActionable() || hasContent()
+    }
+
+    /**
+     * Convert to compact JSON with only essential properties.
+     * Omits empty strings and false booleans to minimize size.
+     */
+    fun toCompactJson(): JSONObject {
+        val json = JSONObject()
+
+        // Only include non-empty text fields
+        if (text.isNotBlank()) json.put("text", text)
+        if (contentDescription.isNotBlank()) json.put("desc", contentDescription)
+        if (viewIdResourceName.isNotBlank()) {
+            // Shorten the resource name by removing package prefix
+            val shortId = viewIdResourceName.substringAfterLast("/")
+            json.put("id", shortId)
+        }
+
+        // Only include true action flags
+        if (isClickable) json.put("click", true)
+        if (isLongClickable) json.put("longClick", true)
+        if (isEditable) json.put("edit", true)
+        if (isScrollable) json.put("scroll", true)
+        if (isCheckable) json.put("check", true)
+        if (isChecked) json.put("checked", true)
+
+        // Compact bounds format: [left, top, right, bottom]
+        val boundsArray = JSONArray()
+        boundsArray.put(bounds.left)
+        boundsArray.put(bounds.top)
+        boundsArray.put(bounds.right)
+        boundsArray.put(bounds.bottom)
+        json.put("bounds", boundsArray)
+
+        return json
+    }
+
+    /**
+     * Collect all relevant (actionable or content-bearing) nodes from this subtree.
+     * Returns a flat list instead of nested hierarchy.
+     */
+    fun collectRelevantNodes(): List<UINode> {
+        val result = mutableListOf<UINode>()
+        collectRelevantNodesRecursive(result)
+        return result
+    }
+
+    private fun collectRelevantNodesRecursive(result: MutableList<UINode>) {
+        if (isRelevant()) {
+            result.add(this)
+        }
+        children.forEach { it.collectRelevantNodesRecursive(result) }
+    }
 }
 
 data class Bounds(
@@ -168,4 +235,22 @@ data class UITree(
 
     /** Compute a hash for change detection */
     fun contentHash(): Int = toJsonString().hashCode()
+
+    /**
+     * Generate compact JSON representation with only actionable/relevant elements.
+     * Returns a flat array of elements instead of a nested tree structure.
+     * This typically reduces the JSON size by 80-90%.
+     */
+    fun toCompactJsonString(): String {
+        val root = this.root ?: return "[]"
+        val relevantNodes = root.collectRelevantNodes()
+        val jsonArray = JSONArray()
+        relevantNodes.forEach { node ->
+            jsonArray.put(node.toCompactJson())
+        }
+        return jsonArray.toString()
+    }
+
+    /** Count of relevant (actionable/content-bearing) nodes */
+    fun relevantNodeCount(): Int = root?.collectRelevantNodes()?.size ?: 0
 }

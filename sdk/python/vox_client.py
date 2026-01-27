@@ -165,16 +165,22 @@ class VoxClient:
         }, timeout=5.0)
         return response.get("type") == "pong"
 
-    async def get_state(self, include_screenshot: bool = False) -> DeviceState:
-        """Get current device state."""
+    async def get_state(self, include_screenshot: bool = False, compact: bool = True) -> DeviceState:
+        """Get current device state.
+
+        Args:
+            include_screenshot: Whether to include a screenshot
+            compact: If True, returns a compact UI tree with only actionable elements (default: True)
+        """
         response = await self._send_and_wait({
             "id": str(uuid.uuid4()),
             "type": "get_state",
-            "include_screenshot": include_screenshot
+            "include_screenshot": include_screenshot,
+            "compact": compact
         })
 
         return DeviceState(
-            ui_tree=json.loads(response.get("ui_tree", "{}")),
+            ui_tree=json.loads(response.get("ui_tree", "{}" if not compact else "[]")),
             screenshot=response.get("screenshot"),
             foreground_package=response.get("foreground_package", ""),
             timestamp=response.get("timestamp", 0)
@@ -188,13 +194,30 @@ class VoxClient:
         })
         return response.get("data")
 
-    async def get_ui_tree(self) -> dict:
-        """Get UI tree."""
+    async def get_ui_tree(self, compact: bool = True) -> dict:
+        """Get UI tree.
+
+        Args:
+            compact: If True, returns a compact UI tree with only actionable elements (default: True)
+        """
         response = await self._send_and_wait({
             "id": str(uuid.uuid4()),
-            "type": "get_ui_tree"
+            "type": "get_ui_tree",
+            "compact": compact
         })
-        return json.loads(response.get("tree", "{}"))
+        return json.loads(response.get("tree", "[]" if compact else "{}"))
+
+    async def get_apps(self) -> list:
+        """Get list of installed apps.
+
+        Returns:
+            List of dicts with 'name' and 'package' keys.
+        """
+        response = await self._send_and_wait({
+            "id": str(uuid.uuid4()),
+            "type": "get_apps"
+        })
+        return response.get("apps", [])
 
     async def execute_action(self, action: str) -> ActionResult:
         """Execute a specific action (e.g., 'tap Settings', 'type hello into Search')."""
@@ -331,14 +354,17 @@ class VoxClientSync:
     def ping(self) -> bool:
         return self._loop.run_until_complete(self._client.ping())
 
-    def get_state(self, include_screenshot: bool = False) -> DeviceState:
-        return self._loop.run_until_complete(self._client.get_state(include_screenshot))
+    def get_state(self, include_screenshot: bool = False, compact: bool = True) -> DeviceState:
+        return self._loop.run_until_complete(self._client.get_state(include_screenshot, compact))
 
     def get_screenshot(self) -> Optional[str]:
         return self._loop.run_until_complete(self._client.get_screenshot())
 
-    def get_ui_tree(self) -> dict:
-        return self._loop.run_until_complete(self._client.get_ui_tree())
+    def get_ui_tree(self, compact: bool = True) -> dict:
+        return self._loop.run_until_complete(self._client.get_ui_tree(compact))
+
+    def get_apps(self) -> list:
+        return self._loop.run_until_complete(self._client.get_apps())
 
     def execute_action(self, action: str) -> ActionResult:
         return self._loop.run_until_complete(self._client.execute_action(action))

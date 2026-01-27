@@ -187,6 +187,25 @@ async def phone_get_ui_tree() -> str:
 
 
 @mcp.tool()
+async def phone_get_apps() -> str:
+    """
+    Get list of installed apps on the phone.
+
+    Use this to find the correct package name before launching an app.
+    Returns a list of apps with their display names and package IDs.
+
+    Returns:
+        JSON array of {name, package} objects, sorted alphabetically by name
+    """
+    try:
+        client = await get_client()
+        apps = await client.get_apps()
+        return json.dumps(apps, indent=2)
+    except Exception as e:
+        raise RuntimeError(f"Failed to get apps: {str(e)}")
+
+
+@mcp.tool()
 async def phone_execute(action: str) -> str:
     """
     Execute an action on the phone.
@@ -226,26 +245,29 @@ async def phone_execute(action: str) -> str:
 
 
 @mcp.tool()
-async def phone_get_state(include_screenshot: bool = True) -> List[Union[str, Image]]:
+async def phone_get_state() -> str:
     """
-    Get the full state of the phone including UI tree, foreground app, and optionally a screenshot.
+    Get the current state of the phone including UI tree and foreground app.
 
-    This is the PRIMARY tool for understanding the current screen state. Always call this
+    This is the PRIMARY tool for understanding what's on screen. Always call this
     before executing actions to know what elements are available.
 
-    Args:
-        include_screenshot: Whether to include a screenshot (default: True)
+    Returns a JSON object with:
+    - foreground_package: The package name of the current app
+    - ui_tree: A compact array of actionable/labeled UI elements, each with:
+        - text: Visible text (if any)
+        - desc: Content description (if any)
+        - id: Resource ID (shortened, if any)
+        - click/longClick/edit/scroll/check: Action flags (only present if true)
+        - bounds: [left, top, right, bottom] coordinates
+    - timestamp: When the state was captured
 
-    Returns:
-        A list containing:
-        - JSON string with: foreground_package, ui_tree (with all element text/IDs), timestamp
-        - Screenshot image (if requested) that you can visually analyze
-
-    The ui_tree contains exact text and resource IDs - use these for tap/type actions.
+    Use element text, desc, or id for tap/type actions. Use phone_get_screenshot()
+    separately if you need to visually see the screen.
     """
     try:
         client = await get_client()
-        state = await client.get_state(include_screenshot=include_screenshot)
+        state = await client.get_state(include_screenshot=False, compact=True)
 
         result = {
             "foreground_package": state.foreground_package,
@@ -253,14 +275,7 @@ async def phone_get_state(include_screenshot: bool = True) -> List[Union[str, Im
             "timestamp": state.timestamp
         }
 
-        # Return both the JSON data and the screenshot as separate content items
-        response: List[Union[str, Image]] = [json.dumps(result, indent=2)]
-
-        if include_screenshot and state.screenshot:
-            image_data = base64.b64decode(state.screenshot)
-            response.append(Image(data=image_data, format="png"))
-
-        return response
+        return json.dumps(result, indent=2)
     except Exception as e:
         raise RuntimeError(f"Failed to get device state: {str(e)}")
 

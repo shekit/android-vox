@@ -161,9 +161,14 @@ class RemoteControlServer(
             is RemoteCommand.GetState -> {
                 serverScope.launch {
                     val state = stateProvider.getDeviceState(command.includeScreenshot)
+                    val uiTreeJson = if (command.compact) {
+                        state.uiTree.toCompactJsonString()
+                    } else {
+                        state.uiTree.toJsonString()
+                    }
                     sendResponse(session, RemoteResponse.State(
                         id = command.id,
-                        uiTree = state.uiTree.toJsonString(),
+                        uiTree = uiTreeJson,
                         screenshot = state.screenshotBase64,
                         foregroundPackage = state.foregroundPackage,
                         timestamp = state.timestamp
@@ -186,11 +191,29 @@ class RemoteControlServer(
 
             is RemoteCommand.GetUITree -> {
                 val tree = stateProvider.getUITree()
+                val treeJson = if (command.compact) {
+                    tree.toCompactJsonString()
+                } else {
+                    tree.toJsonString()
+                }
+                val nodeCount = if (command.compact) {
+                    tree.relevantNodeCount()
+                } else {
+                    tree.nodeCount()
+                }
                 sendResponse(session, RemoteResponse.UITreeResponse(
                     id = command.id,
-                    tree = tree.toJsonString(),
-                    nodeCount = tree.nodeCount(),
+                    tree = treeJson,
+                    nodeCount = nodeCount,
                     foregroundPackage = tree.packageName
+                ))
+            }
+
+            is RemoteCommand.GetApps -> {
+                val apps = stateProvider.getInstalledApps()
+                sendResponse(session, RemoteResponse.AppsResponse(
+                    id = command.id,
+                    apps = apps.map { it.name to it.packageName }
                 ))
             }
 
