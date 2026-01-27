@@ -3,9 +3,32 @@
 ## Current Status
 
 **Phase**: Phase 8 Complete
-**State**: Modular architecture with WebSocket server for cloud control
+**State**: Modular architecture with WebSocket server for cloud control (cleaned up)
 
 ## Session History
+
+### Session 13 — 2026-01-27
+**Focus**: Code review and cleanup of external refactoring
+
+**Completed**:
+- Reviewed ChatGPT-generated refactoring changes across 9 files
+- Deleted deprecated legacy code: ClaudeApiClient.kt, ClaudeResponseParser.kt
+- Kept good changes:
+  - Button disable/enable during command execution (MainActivity)
+  - Concurrent command execution guards (MainActivity, RemoteControlServer)
+  - SharedFlow wiring for UI change events (VoxAccessibilityService, AccessibilityStateProvider)
+  - buildActionCommand() helper for parameterized remote actions (RemoteControlServer)
+  - Fixed hardcoded port in notification (RemoteControlService)
+  - Threading improvements: IO dispatcher for API calls, Main for accessibility actions (CommandOrchestrator)
+- Reverted risky changes:
+  - AccessibilityNodeInfo recycling logic (fragile implementation)
+  - coroutineContext[Job] pattern (unconventional, restored explicit scope parameter)
+
+**Deleted Files**:
+- ClaudeApiClient.kt (replaced by ai/OpenRouterClient + ClaudeDecisionService)
+- ClaudeResponseParser.kt (replaced by ai/ClaudeDecisionService)
+
+---
 
 ### Session 12 — 2026-01-27
 **Focus**: Phase 8 - Refactor for Cloud Control
