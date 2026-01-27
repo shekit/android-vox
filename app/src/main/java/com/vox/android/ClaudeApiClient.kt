@@ -13,8 +13,9 @@ class ClaudeApiClient(private val apiKey: String) {
     companion object {
         private const val TAG = "ClaudeApiClient"
         private const val API_URL = "https://api.anthropic.com/v1/messages"
-        private const val MODEL = "claude-sonnet-4-20250514"
+        private const val MODEL = "claude-opus-4-5-20251101"
         private const val API_VERSION = "2023-06-01"
+        private const val BETA_HEADER = "structured-outputs-2025-11-13"
     }
 
     private val client = OkHttpClient()
@@ -36,6 +37,7 @@ class ClaudeApiClient(private val apiKey: String) {
             .url(API_URL)
             .addHeader("x-api-key", apiKey)
             .addHeader("anthropic-version", API_VERSION)
+            .addHeader("anthropic-beta", BETA_HEADER)
             .addHeader("content-type", "application/json")
             .post(requestBody.toRequestBody(mediaType))
             .build()
@@ -76,23 +78,101 @@ class ClaudeApiClient(private val apiKey: String) {
         }
 
         val systemPrompt = """
-You are an Android accessibility assistant. You receive UI trees from Android apps and user commands.
+You are an Android accessibility assistant running inside the "android-vox" app. You receive UI trees and user commands.
 Your job is to determine what action to take to fulfill the user's command.
 
-Available actions:
-- tap <text>: Tap on an element with the given text
-- type <text> into <field>: Type text into a field
-- scroll down: Scroll down
-- scroll up: Scroll up
-- back: Press back button
-- home: Press home button
-- launch <app>: Launch an app (use package names like com.android.settings)
+IMPORTANT:
+- You are currently running INSIDE the android-vox app (package: com.vox.android)
+- Do NOT tap buttons or interact with android-vox's own UI (buttons like "Ask Claude", "Save", etc.)
+- If the UI tree shows android-vox's interface, IGNORE it and launch the app needed for the user's task
+- Focus on executing the user's request on OTHER apps, not on android-vox itself
 
-Respond with ONLY the action command to execute, nothing else. If the task is complete or impossible, respond with "done".$actionHistory
+UI FEEDBACK:
+- After each action, you will receive feedback about whether the screen changed
+- [UI_FEEDBACK: The screen changed...] means your action had a visible effect
+- [UI_FEEDBACK: The screen did NOT change...] means your action completed silently (e.g., taking a photo, sending a message)
+- If the screen didn't change AND you performed the main task action (like tapping "Take photo"), the task is likely DONE
+- Do NOT repeat the same action if the UI didn't change - this usually means the action completed successfully
+
+Available actions with JSON format:
+
+1. launch - Launch an app (use app name like "Camera", "Chrome", "Gmail" - it will be resolved automatically)
+   {"action": "launch", "parameters": {"app": "Camera"}}
+
+2. tap - Tap on an element
+   {"action": "tap", "parameters": {"text": "Search"}}
+
+3. type - Type text into a field
+   {"action": "type", "parameters": {"text": "hello", "field": "Message"}}
+
+4. scroll_down - Scroll down
+   {"action": "scroll_down"}
+
+5. scroll_up - Scroll up
+   {"action": "scroll_up"}
+
+6. back - Press back button
+   {"action": "back"}
+
+7. home - Press home button
+   {"action": "home"}
+
+8. enter - Press Enter key (to submit forms, URLs)
+   {"action": "enter"}
+
+9. done - Task complete or impossible
+   {"action": "done"}
+
+You MUST respond with a valid JSON object matching the schema.$actionHistory
 
 UI Tree (JSON):
 $uiTree
         """.trimIndent()
+
+        // Define JSON schema for structured output
+        val responseSchema = JSONObject().apply {
+            put("type", "object")
+            put("properties", JSONObject().apply {
+                put("action", JSONObject().apply {
+                    put("type", "string")
+                    put("enum", JSONArray().apply {
+                        put("launch")
+                        put("tap")
+                        put("type")
+                        put("scroll_down")
+                        put("scroll_up")
+                        put("back")
+                        put("home")
+                        put("enter")
+                        put("done")
+                    })
+                    put("description", "The action to perform")
+                })
+                put("parameters", JSONObject().apply {
+                    put("type", "object")
+                    put("properties", JSONObject().apply {
+                        put("app", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Package name for launch action (e.g., com.android.chrome)")
+                        })
+                        put("text", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Text to tap on or type")
+                        })
+                        put("field", JSONObject().apply {
+                            put("type", "string")
+                            put("description", "Field to type into (for type action)")
+                        })
+                    })
+                    put("additionalProperties", false)
+                    put("description", "Parameters for the action")
+                })
+            })
+            put("required", JSONArray().apply {
+                put("action")
+            })
+            put("additionalProperties", false)
+        }
 
         val jsonBody = JSONObject().apply {
             put("model", MODEL)
@@ -107,6 +187,11 @@ $uiTree
                         })
                     })
                 })
+            })
+            // Add output_format for structured output
+            put("output_format", JSONObject().apply {
+                put("type", "json_schema")
+                put("schema", responseSchema)
             })
         }
 

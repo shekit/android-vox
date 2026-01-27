@@ -161,6 +161,59 @@ class VoxAccessibilityService : AccessibilityService() {
         }
     }
 
+    // Search for installed apps by name and return package name
+    fun findAppByName(appName: String): String? {
+        return try {
+            val pm = packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null)
+            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+            val apps = pm.queryIntentActivities(mainIntent, 0)
+
+            val searchLower = appName.lowercase()
+
+            // First try exact match
+            for (app in apps) {
+                val label = app.loadLabel(pm).toString()
+                if (label.equals(appName, ignoreCase = true)) {
+                    Log.d(TAG, "Found exact match for '$appName': ${app.activityInfo.packageName}")
+                    return app.activityInfo.packageName
+                }
+            }
+
+            // Then try contains match
+            for (app in apps) {
+                val label = app.loadLabel(pm).toString().lowercase()
+                if (label.contains(searchLower) || searchLower.contains(label)) {
+                    Log.d(TAG, "Found partial match for '$appName': ${app.activityInfo.packageName} (label: ${app.loadLabel(pm)})")
+                    return app.activityInfo.packageName
+                }
+            }
+
+            Log.w(TAG, "No app found matching: $appName")
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error searching for app: $appName", e)
+            null
+        }
+    }
+
+    // Get list of installed launchable apps (name -> package)
+    fun getInstalledApps(): Map<String, String> {
+        return try {
+            val pm = packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null)
+            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+            val apps = pm.queryIntentActivities(mainIntent, 0)
+
+            apps.associate {
+                it.loadLabel(pm).toString() to it.activityInfo.packageName
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting installed apps", e)
+            emptyMap()
+        }
+    }
+
     // P5.2: Find node by text/id
     fun findNodeByText(text: String): AccessibilityNodeInfo? {
         val rootNode = rootInActiveWindow ?: run {
@@ -168,17 +221,18 @@ class VoxAccessibilityService : AccessibilityService() {
             return null
         }
 
-        try {
-            val found = findNodeByTextRecursive(rootNode, text)
-            if (found != null) {
-                Log.d(TAG, "Found node with text '$text': ${found.className}")
-                return found
-            } else {
-                Log.w(TAG, "No node found with text: $text")
-                return null
+        val found = findNodeByTextRecursive(rootNode, text)
+        if (found != null) {
+            Log.d(TAG, "Found node with text '$text': ${found.className}")
+            // Only recycle root if found is a different node (deeper in tree)
+            if (found !== rootNode) {
+                rootNode.recycle()
             }
-        } finally {
+            return found
+        } else {
+            Log.w(TAG, "No node found with text: $text")
             rootNode.recycle()
+            return null
         }
     }
 
@@ -195,7 +249,10 @@ class VoxAccessibilityService : AccessibilityService() {
             if (child != null) {
                 val found = findNodeByTextRecursive(child, text)
                 if (found != null) {
-                    child.recycle()
+                    // Only recycle child if found is a deeper descendant (not the child itself)
+                    if (found !== child) {
+                        child.recycle()
+                    }
                     return found
                 }
                 child.recycle()
@@ -211,17 +268,18 @@ class VoxAccessibilityService : AccessibilityService() {
             return null
         }
 
-        try {
-            val found = findNodeByIdRecursive(rootNode, resourceId)
-            if (found != null) {
-                Log.d(TAG, "Found node with id '$resourceId': ${found.className}")
-                return found
-            } else {
-                Log.w(TAG, "No node found with id: $resourceId")
-                return null
+        val found = findNodeByIdRecursive(rootNode, resourceId)
+        if (found != null) {
+            Log.d(TAG, "Found node with id '$resourceId': ${found.className}")
+            // Only recycle root if found is a different node (deeper in tree)
+            if (found !== rootNode) {
+                rootNode.recycle()
             }
-        } finally {
+            return found
+        } else {
+            Log.w(TAG, "No node found with id: $resourceId")
             rootNode.recycle()
+            return null
         }
     }
 
@@ -237,7 +295,10 @@ class VoxAccessibilityService : AccessibilityService() {
             if (child != null) {
                 val found = findNodeByIdRecursive(child, resourceId)
                 if (found != null) {
-                    child.recycle()
+                    // Only recycle child if found is a deeper descendant (not the child itself)
+                    if (found !== child) {
+                        child.recycle()
+                    }
                     return found
                 }
                 child.recycle()
@@ -394,19 +455,43 @@ class VoxAccessibilityService : AccessibilityService() {
             return false
         }
 
-        try {
-            // Find a scrollable node in the tree
-            val scrollableNode = findScrollableNode(rootNode)
-            if (scrollableNode != null) {
-                val success = scrollForward(scrollableNode)
-                scrollableNode.recycle()
-                return success
-            } else {
-                Log.w(TAG, "No scrollable node found in active window")
-                return false
+        // Find a scrollable node in the tree
+        val scrollableNode = findScrollableNode(rootNode)
+        if (scrollableNode != null) {
+            val success = scrollForward(scrollableNode)
+            scrollableNode.recycle()
+            // Only recycle root if it's different from scrollable node
+            if (scrollableNode !== rootNode) {
+                rootNode.recycle()
             }
-        } finally {
+            return success
+        } else {
+            Log.w(TAG, "No scrollable node found in active window")
             rootNode.recycle()
+            return false
+        }
+    }
+
+    fun scrollBackwardInActiveWindow(): Boolean {
+        val rootNode = rootInActiveWindow ?: run {
+            Log.w(TAG, "Cannot scroll: root window is null")
+            return false
+        }
+
+        // Find a scrollable node in the tree
+        val scrollableNode = findScrollableNode(rootNode)
+        if (scrollableNode != null) {
+            val success = scrollBackward(scrollableNode)
+            scrollableNode.recycle()
+            // Only recycle root if it's different from scrollable node
+            if (scrollableNode !== rootNode) {
+                rootNode.recycle()
+            }
+            return success
+        } else {
+            Log.w(TAG, "No scrollable node found in active window")
+            rootNode.recycle()
+            return false
         }
     }
 
@@ -422,7 +507,10 @@ class VoxAccessibilityService : AccessibilityService() {
             if (child != null) {
                 val found = findScrollableNode(child)
                 if (found != null) {
-                    child.recycle()
+                    // Only recycle child if found is a deeper descendant (not the child itself)
+                    if (found !== child) {
+                        child.recycle()
+                    }
                     return found
                 }
                 child.recycle()
@@ -461,5 +549,71 @@ class VoxAccessibilityService : AccessibilityService() {
             Log.e(TAG, "Error pressing home", e)
             false
         }
+    }
+
+    fun pressEnter(): Boolean {
+        return try {
+            // Strategy 1: Search ALL windows for keyboard action buttons (Go, Search, etc.)
+            // The keyboard is a separate window from the app
+            val allWindows = windows
+            Log.d(TAG, "Searching ${allWindows.size} windows for keyboard action button")
+
+            for (window in allWindows) {
+                val windowRoot = window.root ?: continue
+                Log.d(TAG, "Checking window: ${window.title}, type=${window.type}")
+
+                val keyboardButton = findKeyboardActionButton(windowRoot)
+                if (keyboardButton != null) {
+                    val success = keyboardButton.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                    keyboardButton.recycle()
+                    windowRoot.recycle()
+                    if (success) {
+                        Log.d(TAG, "Pressed Enter via keyboard action button in window: ${window.title}")
+                        return true
+                    }
+                }
+                windowRoot.recycle()
+            }
+
+            Log.w(TAG, "Could not press Enter - no keyboard button found in ${allWindows.size} windows")
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error pressing enter", e)
+            false
+        }
+    }
+
+    private fun findKeyboardActionButton(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // Look for common keyboard action button texts
+        val actionTexts = listOf("Go", "Search", "Submit", "Send", "Done", "Next")
+
+        for (actionText in actionTexts) {
+            val found = findNodeByTextRecursive(node, actionText)
+            if (found != null && found.isClickable) {
+                return found
+            }
+            found?.recycle()
+        }
+
+        return null
+    }
+
+    private fun findFocusedNode(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+        if (node == null) return null
+        if (node.isFocused) return node
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val focused = findFocusedNode(child)
+            if (focused != null) {
+                // Only recycle child if focused is a deeper descendant (not the child itself)
+                if (focused !== child) {
+                    child.recycle()
+                }
+                return focused
+            }
+            child.recycle()
+        }
+        return null
     }
 }

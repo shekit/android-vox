@@ -118,7 +118,8 @@ class MainActivity : AppCompatActivity() {
         service: VoxAccessibilityService,
         stepNumber: Int = 1,
         statusLog: String = "",
-        actionHistory: String = ""
+        actionHistory: String = "",
+        previousUiTreeHash: Int = 0
     ) {
         Log.d(TAG, "Command loop step $stepNumber")
 
@@ -140,9 +141,22 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Send request to Claude
+        // Compare UI tree with previous to detect changes
+        val currentUiTreeHash = uiTree.hashCode()
+        val uiChanged = previousUiTreeHash == 0 || currentUiTreeHash != previousUiTreeHash
+        val uiChangeInfo = if (stepNumber > 1) {
+            if (uiChanged) {
+                "\n[UI_FEEDBACK: The screen changed after the last action]"
+            } else {
+                "\n[UI_FEEDBACK: The screen did NOT change after the last action - the action may have completed silently or had no visible effect]"
+            }
+        } else ""
+        Log.d(TAG, "UI tree hash: $currentUiTreeHash, previous: $previousUiTreeHash, changed: $uiChanged")
+
+        // Send request to Claude with UI change feedback
+        val historyWithFeedback = actionHistory + uiChangeInfo
         val client = ClaudeApiClient(apiKey)
-        client.sendRequest(userCommand, uiTree, actionHistory) { success, response, error ->
+        client.sendRequest(userCommand, uiTree, historyWithFeedback) { success, response, error ->
             runOnUiThread {
                 if (success && response != null) {
                     // Parse Claude response
@@ -193,7 +207,8 @@ class MainActivity : AppCompatActivity() {
                                     } else {
                                         "$actionHistory\nStep $stepNumber: $action"
                                     }
-                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus, updatedHistory)
+                                    // Pass current UI tree hash for comparison in next iteration
+                                    runCommandLoop(userCommand, apiKey, service, stepNumber + 1, updatedStatus, updatedHistory, currentUiTreeHash)
                                 }, 1500) // Wait 1.5s for UI to update
 
                             } catch (e: Exception) {
@@ -254,12 +269,8 @@ class MainActivity : AppCompatActivity() {
             }
             action.startsWith("launch ", ignoreCase = true) -> {
                 val appName = action.substring(7).trim()
-                val packageName = when (appName.lowercase()) {
-                    "settings" -> "com.android.settings"
-                    "messages" -> "com.google.android.apps.messaging"
-                    "chrome" -> "com.android.chrome"
-                    else -> appName // Assume it's a package name
-                }
+                // First try to find the app by name, then fall back to using it as package name
+                val packageName = service.findAppByName(appName) ?: appName
                 val success = service.launchApp(packageName)
                 if (success) "Launched $appName" else "Could not launch $appName"
             }
@@ -268,8 +279,12 @@ class MainActivity : AppCompatActivity() {
                 if (success) "Scrolled down" else "Could not scroll"
             }
             action.equals("scroll up", ignoreCase = true) -> {
-                // Note: scroll up is not implemented in VoxAccessibilityService yet
-                "Scroll up not implemented yet"
+                val success = service.scrollBackwardInActiveWindow()
+                if (success) "Scrolled up" else "Could not scroll up"
+            }
+            action.equals("enter", ignoreCase = true) -> {
+                val success = service.pressEnter()
+                if (success) "Pressed Enter key" else "Enter action failed"
             }
             else -> {
                 "Unknown action: $action"
