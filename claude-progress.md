@@ -2,10 +2,48 @@
 
 ## Current Status
 
-**Phase**: Phase 7 Complete + Enhancements
-**State**: Installed apps list sent to Claude, SUCCESS feedback, robust app launching
+**Phase**: Phase 8 Complete
+**State**: Modular architecture with WebSocket server for cloud control
 
 ## Session History
+
+### Session 12 — 2026-01-27
+**Focus**: Phase 8 - Refactor for Cloud Control
+
+**Completed**:
+- P8.1: Fixed bugs (race conditions with AtomicReference, shared screenshot executor, safeRunOnUiThread)
+- P8.2: Created core domain models (Action, UITree, DeviceState, ActionResult, CommandRecord sealed classes)
+- P8.3: Defined core interfaces (DeviceStateProvider, ActionExecutor, ActionDecisionService, CommandSource)
+- P8.4: Extracted device layer (AccessibilityStateProvider, AccessibilityActionExecutor, AppManager)
+- P8.5: Extracted AI layer (PromptBuilder, OpenRouterClient, ClaudeDecisionService)
+- P8.6: Created CommandOrchestrator with Kotlin coroutines/Flow
+- P8.7: Slimmed MainActivity to use orchestrator (~250 lines vs ~417)
+- P8.8-P8.10: Added WebSocket server with Ktor, protocol, and state streaming
+- P8.11-P8.12: Added token auth, foreground service with notification stop button
+- P8.13: Created Python client SDK (vox_client.py)
+- P8.14: Created cloud control demo script (cloud_control_demo.py)
+
+**Architecture**:
+```
+core/models/     - Action, UITree, DeviceState, ActionResult, CommandRecord
+core/interfaces/ - DeviceStateProvider, ActionExecutor, ActionDecisionService, CommandSource
+device/          - AccessibilityStateProvider, AccessibilityActionExecutor, AppManager
+ai/              - PromptBuilder, OpenRouterClient, ClaudeDecisionService
+orchestration/   - CommandOrchestrator, ExecutionState
+control/remote/  - RemoteControlServer, RemoteControlService, protocol/
+sdk/python/      - vox_client.py, cloud_control_demo.py
+```
+
+**Data Flow**:
+```
+CommandSource -> CommandOrchestrator -> (DeviceStateProvider + ActionDecisionService + ActionExecutor) -> ActionResult
+```
+
+**VoxAccessibilityService**: Slimmed from 779 to ~230 lines, now a thin wrapper delegating to device layer components.
+
+**Cloud Control**: Phone runs as dumb executor, AI runs in cloud. Python SDK connects via WebSocket, gets device state, sends actions.
+
+---
 
 ### Session 11 — 2026-01-26
 **Focus**: Send installed apps list to Claude, event-based UI change detection
