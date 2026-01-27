@@ -410,8 +410,8 @@
           "id": "P9.3",
           "description": "Implement phone_get_screenshot tool",
           "test": "Tool returns base64 screenshot that Claude can see",
-          "passes": false,
-          "notes": "Returns image data for Claude's vision capability"
+          "passes": true,
+          "notes": "Returns MCP Image object for Claude's vision capability"
         },
         {
           "id": "P9.4",
