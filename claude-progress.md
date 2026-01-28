@@ -3,9 +3,38 @@
 ## Current Status
 
 **Phase**: Phase 10 Complete
-**State**: MCP optimizations for Claude Code
+**State**: MCP reliability improvements - auto UI state on failure
 
 ## Session History
+
+### Session 16 — 2026-01-27
+**Focus**: MCP reliability improvement - auto-return UI state on failure
+
+**Problem Identified**:
+- During phone control session, when `tap Send` failed, I guessed coordinates from the screenshot instead of getting fresh UI state
+- This led to multiple failed attempts toggling a checkbox instead of hitting the send button
+- Root cause: trying to be "fast" by guessing rather than being methodical
+
+**Solution Implemented**:
+- Modified `phone_execute()` in vox_mcp_server.py to auto-return current UI state when an action fails
+- On failure, response now includes:
+  ```json
+  {
+    "result": "failed",
+    "message": "<error>",
+    "hint": "Action failed. Here is the current UI state...",
+    "current_state": { "foreground_package": "...", "ui_tree": [...], "timestamp": ... }
+  }
+  ```
+- This eliminates the need for a separate `phone_get_state()` call after failures
+- Forces the agent to see fresh UI state immediately, preventing coordinate guessing
+
+**Files Modified**:
+- `sdk/mcp/vox_mcp_server.py` - phone_execute() now returns UI state on failure
+
+**Commit**: `de056cc` - Return UI state on phone_execute failure for faster retries
+
+---
 
 ### Session 15 — 2026-01-27
 **Focus**: MCP optimizations - compact UI tree, phone_get_apps, exact package IDs
