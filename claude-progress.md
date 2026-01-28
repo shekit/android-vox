@@ -3,9 +3,51 @@
 ## Current Status
 
 **Phase**: Phase 10 Complete
-**State**: MCP reliability improvements - auto UI state on failure
+**State**: Viewport filtering for UI tree optimization
 
 ## Session History
+
+### Session 17 — 2026-01-28
+**Focus**: Viewport filtering to reduce UI tree size for complex pages
+
+**Problem Identified**:
+- During a phone control session, Google Search results page generated a 74,859 character UI tree
+- This exceeded token limits and caused the MCP tool to fail
+- Root cause: UI tree included ALL elements in scrollable containers, not just visible ones
+- The "compact" filter was applied but web pages have hundreds of elements that pass the "actionable OR has content" filter
+
+**Solution Implemented**:
+- Added viewport filtering to only include elements visible on screen
+- Added scroll hints so Claude knows when to scroll for more content
+- New response format:
+  ```json
+  {
+    "ui_tree": [...],
+    "has_content_above": false,
+    "has_content_below": true,
+    "visible_count": 45,
+    "total_relevant_count": 847
+  }
+  ```
+
+**Files Modified**:
+- `UITree.kt` - Added Viewport, ViewportFilterResult, bounds intersection checks, viewport-filtered collection
+- `DeviceStateProvider.kt` - Added getViewport() interface method
+- `AccessibilityStateProvider.kt` - Implemented getViewport() using display metrics and system bar heights
+- `RemoteControlServer.kt` - Updated GetState/GetUITree handlers to use viewport filtering in compact mode
+- `vox_mcp_server.py` - Updated instructions to explain viewport filtering and scroll hints
+
+**How it works**:
+1. Get screen dimensions from display metrics
+2. Get status bar and navigation bar heights
+3. Calculate visible viewport bounds
+4. Filter UI tree to only elements whose bounds intersect the viewport
+5. Track if any elements were filtered above/below for scroll hints
+6. Claude scrolls and calls get_state again to see new content
+
+**Commit**: `c888817` - Add viewport filtering to reduce UI tree size for complex pages
+
+---
 
 ### Session 16 — 2026-01-27
 **Focus**: MCP reliability improvement - auto-return UI state on failure
