@@ -40,9 +40,14 @@ interface ActionExecutor {
     fun swipe(direction: SwipeDirection): Boolean
 
     /**
-     * Type text into a field.
+     * Type text into a field. If field is null, uses the currently focused editable field.
      */
-    fun typeText(field: String, text: String): Boolean
+    fun typeText(field: String?, text: String): Boolean
+
+    /**
+     * Append text to a field (adds to existing content). If field is null, uses focused field.
+     */
+    fun appendText(field: String?, text: String): Boolean
 
     /**
      * Scroll in the active window.

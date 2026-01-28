@@ -74,7 +74,7 @@ LAUNCHING APPS:
 - DON'T guess package names - look them up first
 
 Available actions for phone_execute:
-- tap <text>: Tap on element containing text (e.g., "tap Settings")
+- tap <text>: Tap on element containing text (e.g., "tap Settings"). Prefers buttons/list items over input fields when multiple elements match.
 - tap_id <id>: Tap on element with resource ID (e.g., "tap_id com.android.settings:id/search_action_bar")
 - long_press <text>: Long press on element containing text (e.g., "long_press Photo.jpg")
 - tap_at <x> <y>: Tap at specific screen coordinates (e.g., "tap_at 540 1200")
@@ -82,8 +82,10 @@ Available actions for phone_execute:
 - swipe_right: Swipe right
 - swipe_up: Swipe up (e.g., to dismiss)
 - swipe_down: Swipe down (e.g., to pull down notifications)
-- type <text>: Type text into the focused field (e.g., "type hello world")
-- type <text> into <field>: Type into specific field (e.g., "type john into Username")
+- type <text>: Type text into the focused field, REPLACING existing content (e.g., "type hello world")
+- type <text> into <field>: Type into specific field, REPLACING existing content (e.g., "type john into Username")
+- append <text>: Append text to the focused field, keeping existing content (e.g., "append more text")
+- append <text> into <field>: Append text to specific field (e.g., "append @gmail.com into Email")
 - launch <package>: Launch app by exact package ID (e.g., "launch com.google.android.GoogleCamera")
 - back: Press the back button
 - home: Press the home button
@@ -218,7 +220,7 @@ async def phone_execute(action: str) -> str:
 
     Args:
         action: The action to execute. Supported actions:
-            - "tap <text>": Tap on element containing text (e.g., "tap Settings")
+            - "tap <text>": Tap on element containing text (prefers buttons over input fields)
             - "tap_id <id>": Tap on element with resource ID
             - "long_press <text>": Long press on element (e.g., "long_press Photo.jpg")
             - "tap_at <x> <y>": Tap at screen coordinates (e.g., "tap_at 540 1200")
@@ -226,9 +228,11 @@ async def phone_execute(action: str) -> str:
             - "swipe_right": Swipe right
             - "swipe_up": Swipe up (dismiss, pull up)
             - "swipe_down": Swipe down (notifications)
-            - "type <text>": Type text into focused field
-            - "type <text> into <field>": Type into specific field
-            - "launch <app>": Launch app by name or package
+            - "type <text>": Type into focused field, REPLACING content
+            - "type <text> into <field>": Type into specific field, REPLACING content
+            - "append <text>": Append to focused field, KEEPING existing content
+            - "append <text> into <field>": Append to specific field
+            - "launch <package>": Launch app by exact package ID
             - "back": Press back button
             - "home": Press home button
             - "enter": Press enter/submit button

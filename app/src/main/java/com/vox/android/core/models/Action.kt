@@ -20,8 +20,11 @@ sealed class Action {
     /** Swipe in a direction */
     data class Swipe(val direction: SwipeDirection) : Action()
 
-    /** Type text into a field identified by its current text/hint */
-    data class Type(val text: String, val field: String) : Action()
+    /** Type text into a field identified by its current text/hint. If field is null, uses focused field. */
+    data class Type(val text: String, val field: String?) : Action()
+
+    /** Append text to a field (adds to existing content instead of replacing) */
+    data class Append(val text: String, val field: String?) : Action()
 
     /** Scroll in a direction */
     data class Scroll(val direction: ScrollDirection) : Action()
@@ -75,7 +78,19 @@ sealed class Action {
                     val parts = trimmed.substring(5).split(" into ", limit = 2)
                     if (parts.size == 2) {
                         Type(parts[0].trim(), parts[1].trim())
-                    } else null
+                    } else {
+                        // No "into" specified - use focused field
+                        Type(trimmed.substring(5).trim(), null)
+                    }
+                }
+                trimmed.startsWith("append ", ignoreCase = true) -> {
+                    val parts = trimmed.substring(7).split(" into ", limit = 2)
+                    if (parts.size == 2) {
+                        Append(parts[0].trim(), parts[1].trim())
+                    } else {
+                        // No "into" specified - use focused field
+                        Append(trimmed.substring(7).trim(), null)
+                    }
                 }
                 trimmed.startsWith("launch ", ignoreCase = true) -> {
                     Launch(trimmed.substring(7).trim())
@@ -99,7 +114,8 @@ sealed class Action {
             SwipeDirection.UP -> "swipe up"
             SwipeDirection.DOWN -> "swipe down"
         }
-        is Type -> "type $text into $field"
+        is Type -> if (field != null) "type $text into $field" else "type $text"
+        is Append -> if (field != null) "append $text into $field" else "append $text"
         is Scroll -> when (direction) {
             ScrollDirection.DOWN -> "scroll down"
             ScrollDirection.UP -> "scroll up"

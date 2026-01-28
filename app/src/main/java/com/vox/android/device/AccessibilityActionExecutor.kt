@@ -67,10 +67,19 @@ class AccessibilityActionExecutor(
                 }
             }
             is Action.Type -> {
+                val fieldDesc = action.field ?: "focused field"
                 if (typeText(action.field, action.text)) {
-                    ActionResult.success(action, "Typed '${action.text}' into '${action.field}'")
+                    ActionResult.success(action, "Typed '${action.text}' into '$fieldDesc'")
                 } else {
-                    ActionResult.failure(action, "Could not type into '${action.field}'", FailureReason.ELEMENT_NOT_FOUND)
+                    ActionResult.failure(action, "Could not type into '$fieldDesc'", FailureReason.ELEMENT_NOT_FOUND)
+                }
+            }
+            is Action.Append -> {
+                val fieldDesc = action.field ?: "focused field"
+                if (appendText(action.field, action.text)) {
+                    ActionResult.success(action, "Appended '${action.text}' to '$fieldDesc'")
+                } else {
+                    ActionResult.failure(action, "Could not append to '$fieldDesc'", FailureReason.ELEMENT_NOT_FOUND)
                 }
             }
             is Action.Scroll -> {
@@ -128,21 +137,78 @@ class AccessibilityActionExecutor(
 
     override fun tapByText(text: String): Boolean {
         val rootNode = service.rootInActiveWindow ?: return false
-        val node = findNodeByTextRecursive(rootNode, text)
-        val success = if (node != null) {
-            tapNode(node).also { node.recycle() }
-        } else {
+
+        // Find all matching nodes
+        val allMatches = mutableListOf<AccessibilityNodeInfo>()
+        findAllNodesByTextRecursive(rootNode, text, allMatches)
+
+        if (allMatches.isEmpty()) {
             Log.w(TAG, "Cannot tap: node with text '$text' not found")
-            false
+            rootNode.recycle()
+            return false
         }
-        if (node !== rootNode) rootNode.recycle()
+
+        // Prefer non-EditText clickable elements over EditText fields
+        val sortedMatches = allMatches.sortedBy { node ->
+            val isEditText = node.className?.toString()?.contains("EditText", ignoreCase = true) == true
+            val isClickable = node.isClickable || hasClickableParent(node)
+            when {
+                !isEditText && isClickable -> 0  // Best: non-EditText that's clickable
+                !isEditText -> 1                  // Good: non-EditText
+                isClickable -> 2                  // OK: EditText that's clickable
+                else -> 3                         // Last resort: non-clickable EditText
+            }
+        }
+
+        // Try to tap the best match
+        var success = false
+        for (node in sortedMatches) {
+            if (tapNode(node)) {
+                Log.d(TAG, "Tapped node: ${node.className}, text=${node.text}")
+                success = true
+                break
+            }
+        }
+
+        // Clean up
+        allMatches.forEach { if (it !== rootNode) it.recycle() }
+        rootNode.recycle()
         return success
     }
 
-    override fun typeText(field: String, text: String): Boolean {
+    private fun hasClickableParent(node: AccessibilityNodeInfo): Boolean {
+        var parent = node.parent
+        while (parent != null) {
+            if (parent.isClickable) {
+                parent.recycle()
+                return true
+            }
+            val next = parent.parent
+            parent.recycle()
+            parent = next
+        }
+        return false
+    }
+
+    override fun typeText(field: String?, text: String): Boolean {
         val rootNode = service.rootInActiveWindow ?: return false
 
-        // Find the field
+        // If no field specified, find the focused editable field
+        if (field == null) {
+            val focused = findFocusedEditableNode(rootNode)
+            if (focused != null) {
+                val success = typeIntoNode(focused, text)
+                focused.recycle()
+                rootNode.recycle()
+                return success
+            } else {
+                Log.w(TAG, "Cannot type: no focused editable field found")
+                rootNode.recycle()
+                return false
+            }
+        }
+
+        // Find the field by text
         val node = findNodeByTextRecursive(rootNode, field)
         if (node == null) {
             Log.w(TAG, "Cannot type: field '$field' not found")
@@ -170,6 +236,32 @@ class AccessibilityActionExecutor(
         }
 
         if (node !== rootNode) rootNode.recycle()
+        return success
+    }
+
+    override fun appendText(field: String?, text: String): Boolean {
+        val rootNode = service.rootInActiveWindow ?: return false
+
+        // Find the target node
+        val targetNode = if (field == null) {
+            findFocusedEditableNode(rootNode)
+        } else {
+            findNodeByTextRecursive(rootNode, field)
+        }
+
+        if (targetNode == null) {
+            Log.w(TAG, "Cannot append: ${if (field == null) "no focused editable field" else "field '$field' not found"}")
+            rootNode.recycle()
+            return false
+        }
+
+        // Get current text and append
+        val currentText = targetNode.text?.toString() ?: ""
+        val newText = currentText + text
+        val success = typeIntoNode(targetNode, newText)
+
+        if (targetNode !== rootNode) targetNode.recycle()
+        rootNode.recycle()
         return success
     }
 
@@ -357,6 +449,23 @@ class AccessibilityActionExecutor(
             child.recycle()
         }
         return null
+    }
+
+    private fun findAllNodesByTextRecursive(
+        node: AccessibilityNodeInfo,
+        text: String,
+        results: MutableList<AccessibilityNodeInfo>
+    ) {
+        if (node.text?.toString()?.contains(text, ignoreCase = true) == true ||
+            node.contentDescription?.toString()?.contains(text, ignoreCase = true) == true) {
+            results.add(AccessibilityNodeInfo.obtain(node))
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            findAllNodesByTextRecursive(child, text, results)
+            child.recycle()
+        }
     }
 
     private fun tapNode(node: AccessibilityNodeInfo): Boolean {
