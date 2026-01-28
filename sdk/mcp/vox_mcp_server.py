@@ -240,7 +240,8 @@ async def phone_execute(action: str) -> str:
             - "scroll_down": Scroll down
 
     Returns:
-        Result message indicating success or failure
+        Result message indicating success or failure. On failure, also includes
+        the current UI state to help identify the correct element.
     """
     try:
         client = await get_client()
@@ -249,7 +250,23 @@ async def phone_execute(action: str) -> str:
         if result.success:
             return f"Success: {result.message}"
         else:
-            return f"Failed: {result.message}"
+            # On failure, fetch current UI state to help with retry
+            try:
+                state = await client.get_state(include_screenshot=False, compact=True)
+                ui_state = {
+                    "foreground_package": state.foreground_package,
+                    "ui_tree": state.ui_tree,
+                    "timestamp": state.timestamp
+                }
+                return json.dumps({
+                    "result": "failed",
+                    "message": result.message,
+                    "hint": "Action failed. Here is the current UI state to help you find the correct element:",
+                    "current_state": ui_state
+                }, indent=2)
+            except Exception:
+                # If we can't get state, just return the failure message
+                return f"Failed: {result.message}"
     except Exception as e:
         raise RuntimeError(f"Failed to execute action '{action}': {str(e)}")
 
