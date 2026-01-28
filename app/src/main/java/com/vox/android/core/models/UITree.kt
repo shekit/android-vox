@@ -223,7 +223,18 @@ data class UINode(
     ) {
         if (isRelevant()) {
             onRelevant()
+
+            // Detect zero-height elements clamped at the top edge of content area.
+            // Android clips WebView elements that scroll above to the container boundary,
+            // giving them zero height instead of negative y-coordinates.
+            // If we see zero-height elements in the upper portion of the screen, content has scrolled above.
+            // Use a generous threshold since app toolbars vary in height (Chrome toolbar is ~147px).
+            val isZeroHeight = bounds.height <= 0
+            val upperThreshold = viewport.top + 200 // Status bar + typical toolbar height
+            val isClampedAtTop = bounds.top <= upperThreshold
+
             when {
+                isZeroHeight && isClampedAtTop -> onAbove()
                 bounds.intersects(viewport) -> visible.add(this)
                 bounds.isAbove(viewport) -> onAbove()
                 bounds.isBelow(viewport) -> onBelow()
