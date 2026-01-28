@@ -45,7 +45,22 @@
 5. Track if any elements were filtered above/below for scroll hints
 6. Claude scrolls and calls get_state again to see new content
 
-**Commit**: `c888817` - Add viewport filtering to reduce UI tree size for complex pages
+**Bug Fix - has_content_above detection**:
+- Issue: `has_content_above` stayed false even after scrolling down on WebView pages
+- Root cause: Android clips WebView elements that scroll off-screen to the container boundary, giving them zero height instead of negative y-coordinates
+- First attempt: Used arbitrary pixel threshold (`viewport.top + 200`) - worked but not robust
+- Second fix: Use screen halves approach - zero-height elements in upper half indicate content above
+- Third fix: Require labels (text/desc) on zero-height elements to avoid false positives from layout artifacts
+
+**Known Limitation**:
+- Chrome's native home page (new tab) may show false positive `has_content_above: true` due to RecyclerView elements with unusual bounds
+- WebView scroll detection (e.g., Google search results) works correctly
+- The false positive on native pages is acceptable since users can verify by scrolling
+
+**Commits**:
+- `c888817` - Add viewport filtering to reduce UI tree size for complex pages
+- `6df1f58` - Simplify zero-height element detection for scroll hints
+- `b509b06` - Fix false positives: require labels for clamped element detection
 
 ---
 
