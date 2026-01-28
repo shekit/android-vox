@@ -64,9 +64,21 @@ KEY PRINCIPLE: The ui_tree is your source of truth. Every action that targets an
 (tap, type, long_press) MUST use text or IDs found in the ui_tree. Never guess element names
 based on what you think a button might say - always verify in the tree first.
 
-Example:
-- DON'T guess: "tap Send" (might be wrong)
-- DO: Look at ui_tree, find the actual text is "SMS", use "tap SMS"
+TAPPING STRATEGY (use this waterfall approach):
+1. PREFERRED - Use center coordinates: Each element has a "center" field [x, y].
+   Use tap_at with these coordinates for precise, unambiguous taps.
+   Example: element has "center": [1004, 1411] → use "tap_at 1004 1411"
+
+2. FALLBACK - Use tap_id: If center coordinates seem invalid (0,0 or off-screen),
+   use tap_id with the element's "id" field if available.
+   Example: element has "id": "send_button" → use "tap_id send_button"
+
+3. LAST RESORT - Use tap text: Only if no valid center and no id available.
+   Be aware this can be ambiguous when multiple elements have the same text.
+   Example: "tap Send" (but prefer methods 1-2 above)
+
+Why coordinates first: Text-based tapping can hit the wrong element when multiple
+elements share the same text or when UI layers overlap. Coordinates are unambiguous.
 
 LAUNCHING APPS:
 - Before launching an app, call phone_get_apps() to get the list of installed apps

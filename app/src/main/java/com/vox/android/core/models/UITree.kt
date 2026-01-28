@@ -169,6 +169,12 @@ data class UINode(
         boundsArray.put(bounds.bottom)
         json.put("bounds", boundsArray)
 
+        // Center point for easy tap_at targeting
+        val centerArray = JSONArray()
+        centerArray.put(bounds.centerX)
+        centerArray.put(bounds.centerY)
+        json.put("center", centerArray)
+
         return json
     }
 
