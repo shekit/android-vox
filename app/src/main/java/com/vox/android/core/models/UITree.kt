@@ -228,13 +228,16 @@ data class UINode(
             // Android clips WebView elements that scroll off-screen to the container boundary,
             // giving them zero height instead of off-screen coordinates.
             // Use screen halves to determine if clamped above or below.
+            // Only count zero-height elements with actual content (text/desc) - ignore layout artifacts.
             val isZeroHeight = bounds.height <= 0
+            val hasLabel = text.isNotBlank() || contentDescription.isNotBlank()
+            val isClampedElement = isZeroHeight && hasLabel
             val screenMidpoint = viewport.bottom / 2
             val isInUpperHalf = bounds.top < screenMidpoint
 
             when {
-                isZeroHeight && isInUpperHalf -> onAbove()
-                isZeroHeight && !isInUpperHalf -> onBelow()
+                isClampedElement && isInUpperHalf -> onAbove()
+                isClampedElement && !isInUpperHalf -> onBelow()
                 bounds.intersects(viewport) -> visible.add(this)
                 bounds.isAbove(viewport) -> onAbove()
                 bounds.isBelow(viewport) -> onBelow()
