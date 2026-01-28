@@ -162,7 +162,9 @@ class RemoteControlServer(
                 serverScope.launch {
                     val state = stateProvider.getDeviceState(command.includeScreenshot)
                     val uiTreeJson = if (command.compact) {
-                        state.uiTree.toCompactJsonString()
+                        // Use viewport filtering for compact mode
+                        val viewport = stateProvider.getViewport()
+                        state.uiTree.toViewportFilteredJsonString(viewport)
                     } else {
                         state.uiTree.toJsonString()
                     }
@@ -191,15 +193,17 @@ class RemoteControlServer(
 
             is RemoteCommand.GetUITree -> {
                 val tree = stateProvider.getUITree()
-                val treeJson = if (command.compact) {
-                    tree.toCompactJsonString()
+                val treeJson: String
+                val nodeCount: Int
+                if (command.compact) {
+                    // Use viewport filtering for compact mode
+                    val viewport = stateProvider.getViewport()
+                    treeJson = tree.toViewportFilteredJsonString(viewport)
+                    val result = tree.getViewportFilteredResult(viewport)
+                    nodeCount = result.visibleNodes.size
                 } else {
-                    tree.toJsonString()
-                }
-                val nodeCount = if (command.compact) {
-                    tree.relevantNodeCount()
-                } else {
-                    tree.nodeCount()
+                    treeJson = tree.toJsonString()
+                    nodeCount = tree.nodeCount()
                 }
                 sendResponse(session, RemoteResponse.UITreeResponse(
                     id = command.id,

@@ -3,6 +3,7 @@ package com.vox.android.core.interfaces
 import com.vox.android.core.models.AppInfo
 import com.vox.android.core.models.DeviceState
 import com.vox.android.core.models.UITree
+import com.vox.android.core.models.Viewport
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -46,4 +47,10 @@ interface DeviceStateProvider {
      * Returns the package name or null if not found.
      */
     fun findAppByName(name: String): String?
+
+    /**
+     * Get the current viewport (screen dimensions).
+     * Used for filtering UI tree to visible elements only.
+     */
+    fun getViewport(): Viewport
 }

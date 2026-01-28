@@ -194,6 +194,45 @@ data class UINode(
         }
         children.forEach { it.collectRelevantNodesRecursive(result) }
     }
+
+    /**
+     * Collect relevant nodes filtered to viewport, tracking overflow.
+     */
+    fun collectRelevantNodesInViewport(viewport: Bounds): ViewportFilterResult {
+        var hasContentAbove = false
+        var hasContentBelow = false
+        var totalRelevant = 0
+        val visible = mutableListOf<UINode>()
+
+        collectRelevantNodesInViewportRecursive(viewport, visible, { hasContentAbove = true }, { hasContentBelow = true }, { totalRelevant++ })
+
+        return ViewportFilterResult(
+            visibleNodes = visible,
+            hasContentAbove = hasContentAbove,
+            hasContentBelow = hasContentBelow,
+            totalRelevantNodes = totalRelevant
+        )
+    }
+
+    private fun collectRelevantNodesInViewportRecursive(
+        viewport: Bounds,
+        visible: MutableList<UINode>,
+        onAbove: () -> Unit,
+        onBelow: () -> Unit,
+        onRelevant: () -> Unit
+    ) {
+        if (isRelevant()) {
+            onRelevant()
+            when {
+                bounds.intersects(viewport) -> visible.add(this)
+                bounds.isAbove(viewport) -> onAbove()
+                bounds.isBelow(viewport) -> onBelow()
+            }
+        }
+        children.forEach {
+            it.collectRelevantNodesInViewportRecursive(viewport, visible, onAbove, onBelow, onRelevant)
+        }
+    }
 }
 
 data class Bounds(
@@ -206,7 +245,48 @@ data class Bounds(
     val height: Int get() = bottom - top
     val centerX: Int get() = (left + right) / 2
     val centerY: Int get() = (top + bottom) / 2
+
+    /** Check if this bounds intersects with another bounds (viewport) */
+    fun intersects(other: Bounds): Boolean {
+        return left < other.right && right > other.left &&
+               top < other.bottom && bottom > other.top
+    }
+
+    /** Check if this bounds is entirely above the viewport */
+    fun isAbove(viewport: Bounds): Boolean = bottom <= viewport.top
+
+    /** Check if this bounds is entirely below the viewport */
+    fun isBelow(viewport: Bounds): Boolean = top >= viewport.bottom
 }
+
+/**
+ * Represents the visible screen area for viewport filtering.
+ */
+data class Viewport(
+    val width: Int,
+    val height: Int,
+    val statusBarHeight: Int = 0,
+    val navigationBarHeight: Int = 0
+) {
+    /** The actual visible area excluding system bars */
+    val visibleBounds: Bounds get() = Bounds(
+        left = 0,
+        top = statusBarHeight,
+        right = width,
+        bottom = height - navigationBarHeight
+    )
+}
+
+/**
+ * Result of viewport-filtered UI tree collection.
+ * Contains only elements visible in the viewport, plus scroll hints.
+ */
+data class ViewportFilterResult(
+    val visibleNodes: List<UINode>,
+    val hasContentAbove: Boolean,
+    val hasContentBelow: Boolean,
+    val totalRelevantNodes: Int
+)
 
 /**
  * Represents the complete UI tree of the active window.
@@ -255,6 +335,47 @@ data class UITree(
             jsonArray.put(node.toCompactJson())
         }
         return jsonArray.toString()
+    }
+
+    /**
+     * Generate compact JSON with viewport filtering.
+     * Only includes elements visible in the viewport, plus scroll hints.
+     * Returns a JSON object with ui_tree array and scroll metadata.
+     */
+    fun toViewportFilteredJsonString(viewport: Viewport): String {
+        val root = this.root ?: return JSONObject().apply {
+            put("ui_tree", JSONArray())
+            put("has_content_above", false)
+            put("has_content_below", false)
+        }.toString()
+
+        val result = root.collectRelevantNodesInViewport(viewport.visibleBounds)
+
+        val jsonArray = JSONArray()
+        result.visibleNodes.forEach { node ->
+            jsonArray.put(node.toCompactJson())
+        }
+
+        return JSONObject().apply {
+            put("ui_tree", jsonArray)
+            put("has_content_above", result.hasContentAbove)
+            put("has_content_below", result.hasContentBelow)
+            put("visible_count", result.visibleNodes.size)
+            put("total_relevant_count", result.totalRelevantNodes)
+        }.toString()
+    }
+
+    /**
+     * Get viewport-filtered result for further processing.
+     */
+    fun getViewportFilteredResult(viewport: Viewport): ViewportFilterResult {
+        val root = this.root ?: return ViewportFilterResult(
+            visibleNodes = emptyList(),
+            hasContentAbove = false,
+            hasContentBelow = false,
+            totalRelevantNodes = 0
+        )
+        return root.collectRelevantNodesInViewport(viewport.visibleBounds)
     }
 
     /** Count of relevant (actionable/content-bearing) nodes */

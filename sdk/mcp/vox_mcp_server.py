@@ -64,6 +64,13 @@ KEY PRINCIPLE: The ui_tree is your source of truth. Every action that targets an
 (tap, type, long_press) MUST use text or IDs found in the ui_tree. Never guess element names
 based on what you think a button might say - always verify in the tree first.
 
+VIEWPORT FILTERING: The ui_tree only shows elements visible on screen. If you're looking
+for something that might be below the fold, check the scroll hints:
+- has_content_below: true means there's more content if you scroll down
+- has_content_above: true means there's more content if you scroll up
+If you don't find your target element, scroll in the appropriate direction and call
+phone_get_state() again to see newly revealed elements.
+
 TAPPING STRATEGY (use this waterfall approach):
 1. PREFERRED - Use center coordinates: Each element has a "center" field [x, y].
    Use tap_at with these coordinates for precise, unambiguous taps.
@@ -303,6 +310,16 @@ async def phone_get_state() -> str:
 
     Use element text, desc, or id for tap/type actions. Use phone_get_screenshot()
     separately if you need to visually see the screen.
+
+    VIEWPORT FILTERING: The ui_tree only contains elements visible in the current viewport.
+    The response includes scroll hints:
+    - has_content_above: true if there are elements above the visible area
+    - has_content_below: true if there are elements below the visible area
+    - visible_count: number of elements in the viewport
+    - total_relevant_count: total elements if the whole page was included
+
+    If you don't find what you need, use scroll_up or scroll_down to reveal more content,
+    then call phone_get_state() again to see the newly visible elements.
     """
     try:
         client = await get_client()

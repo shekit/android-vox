@@ -17,6 +17,7 @@ import com.vox.android.core.models.DeviceState
 import com.vox.android.core.models.UITree
 import com.vox.android.core.models.UINode
 import com.vox.android.core.models.Bounds
+import com.vox.android.core.models.Viewport
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -207,6 +208,43 @@ class AccessibilityStateProvider(
         }
 
         return null
+    }
+
+    override fun getViewport(): Viewport {
+        val displayMetrics = service.resources.displayMetrics
+        val width = displayMetrics.widthPixels
+        val height = displayMetrics.heightPixels
+
+        // Get status bar height
+        val statusBarHeight = getStatusBarHeight()
+
+        // Get navigation bar height (if visible)
+        val navigationBarHeight = getNavigationBarHeight()
+
+        return Viewport(
+            width = width,
+            height = height,
+            statusBarHeight = statusBarHeight,
+            navigationBarHeight = navigationBarHeight
+        )
+    }
+
+    private fun getStatusBarHeight(): Int {
+        val resourceId = service.resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            service.resources.getDimensionPixelSize(resourceId)
+        } else {
+            0
+        }
+    }
+
+    private fun getNavigationBarHeight(): Int {
+        val resourceId = service.resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            service.resources.getDimensionPixelSize(resourceId)
+        } else {
+            0
+        }
     }
 
     /**
