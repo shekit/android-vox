@@ -2,12 +2,26 @@
 
 This document describes how to set up a **development harness** for any project that Claude will work on iteratively. The harness provides structure, tracking, and protocols that ensure reliable progress across multiple sessions.
 
+## Prerequisites
+
+Before creating a harness, you need an **architecture file** that describes what you're building. This document is the source of truth for system design — the feature list is derived from it.
+
+The architecture file should include:
+- What the system does (purpose, goals)
+- Major components and how they interact
+- Technical decisions (languages, frameworks, APIs)
+- Scope boundaries (what's in, what's out)
+- Phases and milestones
+
+Without an architecture file, you cannot create a meaningful feature list. The harness creation process assumes this document already exists.
+
 ## Overview
 
 A harness consists of:
-- **CLAUDE.md** — Project-specific instructions for Claude
+- **Architecture file** — System design document (prerequisite; CLAUDE.md references this)
+- **CLAUDE.md** — Project-specific instructions for Claude, including reference to architecture
 - **claude-progress.md** — Session history and current state
-- **feature-list** — Structured feature tracking (JSON, YAML, or other format)
+- **feature-list** — Structured feature tracking (JSON, YAML, or other format), derived from the architecture
 - **init script** — Environment verification
 - **scripts/** — Build/deploy/test scripts with environment setup baked in
 
@@ -79,6 +93,18 @@ A simple log of session history:
 ### 3. Create Project Instructions (`CLAUDE.md`)
 
 Include these sections:
+
+#### Architecture Reference
+
+```markdown
+## Architecture
+
+For system design, components, and scope, see: `[architecture-file.md]`
+
+This document is the source of truth for what we're building. The feature list is derived from it.
+```
+
+Replace `[architecture-file.md]` with the actual path to the project's architecture document. This ensures every Claude session knows where to find the overall design context.
 
 #### Commit Protocol
 
@@ -226,9 +252,10 @@ For projects that connect to external devices or services, the init script shoul
 
 Before handing off to Claude:
 
-- [ ] Feature list created with phases and features
+- [ ] Architecture file exists and defines system design
+- [ ] Feature list created with phases and features (derived from architecture)
 - [ ] Progress log initialized
-- [ ] CLAUDE.md has project-specific instructions
+- [ ] CLAUDE.md has project-specific instructions and references the architecture file
 - [ ] Init script verifies environment
 - [ ] Build/deploy scripts created with environment setup
 - [ ] Secrets handling documented with template files
