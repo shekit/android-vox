@@ -3,9 +3,11 @@ package com.vox.android
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -31,34 +33,54 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_SELECTED_MODEL = "selected_model"
     }
 
+    // MCP mode views
+    private lateinit var buttonRemoteControl: Button
+    private lateinit var textStatus: TextView
+    private lateinit var buttonLocalMode: Button
+
+    // Local mode views
+    private lateinit var localModeSection: LinearLayout
     private lateinit var editApiKey: EditText
     private lateinit var buttonSaveApiKey: Button
     private lateinit var spinnerModel: Spinner
     private lateinit var editCommand: EditText
     private lateinit var buttonAskClaude: Button
-    private lateinit var buttonRemoteControl: Button
     private lateinit var textResponse: TextView
 
     private var orchestrator: CommandOrchestrator? = null
     private var statusLog = StringBuilder()
+    private var isLocalMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "MainActivity onCreate")
         setContentView(R.layout.activity_main)
 
-        // Bind views
+        // Bind MCP mode views
+        buttonRemoteControl = findViewById(R.id.buttonRemoteControl)
+        textStatus = findViewById(R.id.textStatus)
+        buttonLocalMode = findViewById(R.id.buttonLocalMode)
+
+        // Bind local mode views
+        localModeSection = findViewById(R.id.localModeSection)
         editApiKey = findViewById(R.id.editApiKey)
         buttonSaveApiKey = findViewById(R.id.buttonSaveApiKey)
         spinnerModel = findViewById(R.id.spinnerModel)
         editCommand = findViewById(R.id.editCommand)
         buttonAskClaude = findViewById(R.id.buttonAskClaude)
-        buttonRemoteControl = findViewById(R.id.buttonRemoteControl)
         textResponse = findViewById(R.id.textResponse)
 
         setupModelSpinner()
         loadApiKey()
         updateRemoteControlButton()
+
+        buttonRemoteControl.setOnClickListener {
+            toggleRemoteControl()
+        }
+
+        buttonLocalMode.setOnClickListener {
+            toggleLocalMode()
+        }
 
         buttonSaveApiKey.setOnClickListener {
             val apiKey = editApiKey.text.toString().trim()
@@ -73,10 +95,6 @@ class MainActivity : AppCompatActivity() {
 
         buttonAskClaude.setOnClickListener {
             executeCommand()
-        }
-
-        buttonRemoteControl.setOnClickListener {
-            toggleRemoteControl()
         }
 
         // Observe execution state
@@ -98,6 +116,21 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "MainActivity onDestroy")
         orchestrator?.cancel()
     }
+
+    // ========== Mode Switching ==========
+
+    private fun toggleLocalMode() {
+        isLocalMode = !isLocalMode
+        if (isLocalMode) {
+            localModeSection.visibility = View.VISIBLE
+            buttonLocalMode.text = getString(R.string.button_switch_mcp)
+        } else {
+            localModeSection.visibility = View.GONE
+            buttonLocalMode.text = getString(R.string.button_switch_local)
+        }
+    }
+
+    // ========== Local Mode: Command Execution ==========
 
     private fun executeCommand() {
         val command = editCommand.text.toString().trim()
@@ -152,7 +185,6 @@ class MainActivity : AppCompatActivity() {
     private fun updateUIForState(state: ExecutionState) {
         when (state) {
             is ExecutionState.Idle -> {
-                // Ready
                 buttonAskClaude.isEnabled = true
             }
             is ExecutionState.Starting -> {
@@ -271,7 +303,7 @@ class MainActivity : AppCompatActivity() {
     private fun toggleRemoteControl() {
         if (RemoteControlService.isRunning()) {
             RemoteControlService.stop(this)
-            textResponse.text = "Remote control server stopped"
+            textStatus.text = "Server stopped"
         } else {
             val apiKey = getApiKey()
             val model = getSelectedModel()
@@ -282,7 +314,7 @@ class MainActivity : AppCompatActivity() {
                 apiKey = apiKey,
                 model = model
             )
-            textResponse.text = "Remote control server starting on port 8080..."
+            textStatus.text = "Server starting on port 8080…"
         }
         // Update button after a short delay to let service state change
         android.os.Handler(mainLooper).postDelayed({
@@ -291,10 +323,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateRemoteControlButton() {
-        buttonRemoteControl.text = if (RemoteControlService.isRunning()) {
-            "Stop Server"
+        if (RemoteControlService.isRunning()) {
+            buttonRemoteControl.text = getString(R.string.button_stop_server)
+            textStatus.text = "Server running on port 8080"
         } else {
-            "Start Server"
+            buttonRemoteControl.text = getString(R.string.button_start_server)
+            textStatus.text = ""
         }
     }
 }

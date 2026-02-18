@@ -2,12 +2,17 @@
 <resources>
     <string name="app_name">android-vox</string>
     <string name="app_ready">Vox Ready</string>
+    <string name="subtitle_mcp">Claude controls your phone via MCP</string>
+    <string name="button_start_server">Enable Remote Control</string>
+    <string name="button_stop_server">Disable Remote Control</string>
+    <string name="button_switch_local">Switch to Local Mode</string>
+    <string name="button_switch_mcp">Back to MCP Mode</string>
     <string name="hint_command">Enter command…</string>
     <string name="button_send">Send</string>
     <string name="button_capture">Capture UI Tree</string>
     <string name="button_launch_app">Launch Settings</string>
     <string name="accessibility_service_description">Allows Vox to read and interact with app interfaces on your behalf.</string>
-    <string name="hint_api_key">Claude API Key (sk-ant-…)</string>
-    <string name="button_save_api_key">Save API Key</string>
-    <string name="button_ask_claude">Ask Claude</string>
+    <string name="hint_api_key">OpenRouter API Key (sk-or-…)</string>
+    <string name="button_save_api_key">Save Key</string>
+    <string name="button_ask_claude">Ask AI</string>
 </resources>
