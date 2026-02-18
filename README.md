@@ -18,7 +18,7 @@ Just a few examples of things you can ask Claude to do on your phone:
 
 - "Open the camera and take a photo"
 - "Go to Google, search for pictures of dogs, and share one to Slack in the experiments channel"
-- "Open Gmail and email hello@example.com todays top headlines"
+- "Open Gmail and email `hello@example.com` todays top headlines"
 - "Find a funny meme in Chrome and send it to Mom on WhatsApp"
 - "Open the claude app on my phone and have a conversation with another claude there"
 
