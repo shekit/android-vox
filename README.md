@@ -40,7 +40,7 @@ Claude reads the screen, figures out what to tap, and chains actions together un
 ### 2. Run setup
 
 ```bash
-git clone https://github.com/anthropics/android-vox.git
+git clone https://github.com/shekit/android-vox.git
 cd android-vox
 ./setup.sh
 ```

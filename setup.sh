@@ -157,10 +157,7 @@ MCP_CONFIG="$SCRIPT_DIR/.mcp.json"
 PYTHON_PATH="$VENV_DIR/bin/python"
 SERVER_PATH="$MCP_DIR/vox_mcp_server.py"
 
-if [ -f "$MCP_CONFIG" ]; then
-    warn ".mcp.json already exists — skipping (delete it and re-run to regenerate)"
-else
-    cat > "$MCP_CONFIG" << EOF
+cat > "$MCP_CONFIG" << EOF
 {
   "mcpServers": {
     "vox-phone": {
@@ -174,8 +171,7 @@ else
   }
 }
 EOF
-    ok "Created .mcp.json"
-fi
+ok "Created .mcp.json"
 
 # ------------------------------------------------------------------
 echo ""

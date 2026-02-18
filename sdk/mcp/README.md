@@ -183,7 +183,7 @@ This allows the MCP server to connect to the phone through the USB connection.
 ## Troubleshooting
 
 ### Connection refused
-- Ensure the Vox Remote Control service is running on the phone (tap "Start Server" in the app)
+- Ensure the Vox Remote Control service is running on the phone (tap "Enable Remote Control" in the app)
 - Check that the phone and computer are on the same network, OR use ADB port forwarding
 - Verify the IP address and port are correct
 
