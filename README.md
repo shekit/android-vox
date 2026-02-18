@@ -8,6 +8,8 @@ Uses your claude code subscription to avoid high API fees.
 
 ![Demo](docs/demo.gif)
 
+[Watch the demo](https://youtu.be/F1NNxQF9fJY?si=rSocY08Jpoq0-Bfu)
+
 [![Watch the demo on YouTube](https://img.youtube.com/vi/F1NNxQF9fJY/hqdefault.jpg)](https://youtu.be/F1NNxQF9fJY?si=rSocY08Jpoq0-Bfu)
 
 ## Examples
