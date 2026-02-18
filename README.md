@@ -72,7 +72,7 @@ Open the android-vox app and tap **Enable Remote Control**.
 Open Claude Code and say:
 
 ```
-Connect to my phone and open the camera
+Open the camera on my phone and take a picture
 ```
 
 Claude will connect, read the UI tree, launch the camera app, and confirm. See the [examples](#examples) above for more ideas.
