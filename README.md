@@ -6,7 +6,9 @@ Say "open the camera and take a photo" and watch it happen.
 
 Uses your claude code subscription to avoid high API fees.
 
-<!-- TODO: Add demo GIF or YouTube link here -->
+![Demo](docs/demo.gif)
+
+[![Watch the demo on YouTube](https://img.youtube.com/vi/F1NNxQF9fJY/hqdefault.jpg)](https://youtu.be/F1NNxQF9fJY?si=rSocY08Jpoq0-Bfu)
 
 ## Examples
 
