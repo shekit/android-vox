@@ -82,7 +82,8 @@ The default setup uses USB. To use WiFi instead:
 1. Make sure your phone and computer are on the same network
 2. Find your phone's IP: **Settings > About phone > IP address**
 3. Edit `.mcp.json` and change `VOX_PHONE_HOST` from `localhost` to your phone's IP
-4. You can skip `adb forward` — WiFi connects directly
+4. Set `VOX_PHONE_PORT` to `8080` (the phone always listens on 8080 — the `--port` flag only affects the local USB tunnel)
+5. You can skip `adb forward` — WiFi connects directly
 
 ## How it works
 
@@ -125,7 +126,7 @@ This makes the phone completely self sufficient (not needing Claude code) but co
 ## Security
 
 - The WebSocket connection is **unencrypted**. Use on trusted networks only.
-- Anyone who can reach the WebSocket port can control your phone. Set `VOX_AUTH_TOKEN` if others share your network.
+- Anyone who can reach the WebSocket port can control your phone. Use USB mode or a trusted network.
 - The accessibility service has full control over the UI — it can tap, type, and read anything on screen.
 
 ## Project structure
