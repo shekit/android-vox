@@ -133,23 +133,6 @@ This makes the phone completely self sufficient (not needing Claude code) but co
 - Anyone who can reach the WebSocket port can control your phone. Use USB mode or a trusted network.
 - The accessibility service has full control over the UI — it can tap, type, and read anything on screen.
 
-## Project structure
-
-```
-android-vox/
-├── app/                          # Android app
-│   └── src/main/java/            # Kotlin source
-├── sdk/
-│   ├── mcp/                      # MCP server (Python)
-│   │   ├── vox_mcp_server.py     # MCP tool definitions
-│   │   └── requirements.txt
-│   └── python/                   # Python client SDK
-│       └── vox_client.py         # WebSocket client library
-├── scripts/
-│   └── deploy.sh                 # Build/install/launch
-└── init.sh                       # Environment check
-```
-
 ## License
 
 MIT
